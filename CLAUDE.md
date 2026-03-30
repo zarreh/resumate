@@ -53,3 +53,4 @@ resumate/
 - [x] 2.2a — LLM Config Infrastructure
 - [x] 2.1 — Resume Upload & Text Extraction
 - [x] 2.2b — LLM-Based Resume Parsing
+- [x] 2.4 — Career History API Endpoints

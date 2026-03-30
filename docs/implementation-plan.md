@@ -886,6 +886,22 @@ All endpoints filter by `user_id` for data isolation. Entry updates trigger embe
 - Updating an entry regenerates its embedding
 - Tests pass for all endpoints including auth checks
 
+### Retrospective (2.4)
+
+**What changed from the plan:**
+- Added `POST /api/v1/career/entries/confirm-all` endpoint (not in original plan) — marks all `parsed_resume` entries as `user_confirmed`. Needed for the "Confirm All" UI action in Phase 2.3.
+- Added `GET /api/v1/career/entries/{id}` endpoint for fetching a single entry by ID.
+- Embedding regeneration deferred — entries don't have embeddings generated on create/update yet. This will be added when the embedding infrastructure is actually needed (Phase 3.2 retrieval). The model column exists but is populated as `NULL` for now.
+- `CareerService` class wraps all DB operations, instantiated per-request with the DB session from FastAPI DI.
+- Date strings (YYYY or YYYY-MM) are parsed into `date` objects using a simple parser. Dates are serialized back as ISO format strings in responses.
+- DELETE endpoint uses `Response(status_code=204)` with `response_class=Response` — FastAPI's default 204 handling raises AssertionError if a response body could be produced.
+
+**Gotchas discovered:**
+- FastAPI raises `AssertionError: Status code 204 must not have a response body` if you use `status_code=204` without `response_class=Response`. The decorator must include `response_class=Response` and the function must return a `Response` explicitly.
+- User isolation tested explicitly: creating an entry as user A and trying to GET/UPDATE/DELETE it as user B returns 404.
+
+**Test coverage:** 17 new tests (CRUD + auth + isolation + confirm-all), total suite: 98 tests passing.
+
 ---
 
 ## Phase 3: Job Analysis & Matching
