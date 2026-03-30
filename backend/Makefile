@@ -26,10 +26,10 @@ migrate-create:
 	poetry run alembic revision --autogenerate -m "$(message)"
 
 docker-build:
-	docker compose build
+	docker compose -f ../docker-compose.yml build
 
 docker-up:
-	docker compose up -d
+	docker compose -f ../docker-compose.yml up -d
 
 docker-down:
-	docker compose down
+	docker compose -f ../docker-compose.yml down

@@ -31,7 +31,7 @@ pyyaml = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
-pytest-asyncio = "^0.24"
+pytest-asyncio = "^0.25"
 pytest-cov = "^6.0"
 ruff = "^0.9"
 mypy = "^1.14"
@@ -43,7 +43,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::sqlalchemy.exc.SAWarning:_pytest",
+]
 
 [tool.mypy]
 python_version = "3.12"

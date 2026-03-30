@@ -42,9 +42,11 @@ resumate/
 
 ## Current Progress
 
+> **Rule:** After completing any sub-phase, mark it `[x]` here immediately. This checklist is the canonical at-a-glance status — keep it in sync with `docs/implementation-plan.md`.
+
 - [x] 1.1 — Project Scaffolding (backend structure, pyproject.toml, Makefile, config)
-- [ ] 1.2 — Docker Compose Setup
-- [ ] 1.3 — Database Schema & Migrations
+- [x] 1.2 — Docker Compose Setup
+- [x] 1.3 — Database Schema & Migrations
 - [ ] 1.4 — FastAPI Skeleton + Auth
 - [ ] 1.5 — Next.js Frontend Scaffolding
 - [ ] 1.6 — WebSocket Streaming Infrastructure
