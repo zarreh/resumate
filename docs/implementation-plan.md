@@ -858,6 +858,24 @@ frontend/src/types/career.ts   # TypeScript types
 - "Confirm All" marks entries as verified
 - All changes persist via API
 
+### Retrospective (2.3)
+
+**What changed from the plan:**
+- Simplified component list — `BulletPointEditor.tsx` and `ConfirmAllButton.tsx` are not separate components. Bullet editing is handled inline in `EntryForm` via a textarea (one bullet per line). "Confirm All" is a button directly in the career page header.
+- Used `Dialog` (shadcn/ui) for both `EntryForm` and `ImportDialog` instead of separate modal patterns.
+- Installed three new shadcn/ui components: `dialog`, `badge`, `textarea`.
+- `ImportDialog` supports drag-and-drop file upload as well as click-to-browse.
+- No parsing step in the UI yet — the import dialog extracts text via `POST /import` and shows a success toast. The parsing flow (calling `POST /parse` and converting results to entries) will be wired when the LLM integration is end-to-end tested.
+- Added `lib/api/career.ts` for typed API client functions (moved to a subdirectory `lib/api/` for better organization).
+- `EntryCard` includes inline delete confirmation (two-step: click Delete → Confirm/Cancel).
+- `EntryForm` serves both create and edit modes — when an `entry` prop is passed, fields are pre-filled.
+
+**Gotchas discovered:**
+- The `apiClient` from `lib/api.ts` always sets `Content-Type: application/json` and calls `res.json()`, which breaks for file uploads (FormData) and 204 responses (no body). `uploadResume` and `deleteEntry` use `fetch` directly to handle these cases.
+- Next.js App Router route groups `(dashboard)` work transparently — `/career` maps to `app/(dashboard)/career/page.tsx` because the existing dashboard layout wraps it.
+
+**Test coverage:** Frontend build passes cleanly. No frontend unit tests added (consistent with prior phases).
+
 ---
 
 ### 2.4 — Career History API Endpoints
