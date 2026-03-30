@@ -31,9 +31,7 @@ class TailoredResume(UUIDMixin, TimestampMixin, Base):
     template_name: Mapped[str] = mapped_column(String)
     pdf_path: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    session: Mapped[Session] = relationship(
-        back_populates="tailored_resumes"
-    )
+    session: Mapped[Session] = relationship(back_populates="tailored_resumes")
     user: Mapped[User] = relationship()
 
 

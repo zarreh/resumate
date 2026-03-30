@@ -32,9 +32,7 @@ class FeedbackLog(UUIDMixin, Base):
         sa.DateTime(timezone=True), server_default=func.now()
     )
 
-    session: Mapped[Session] = relationship(
-        back_populates="feedback_logs"
-    )
+    session: Mapped[Session] = relationship(back_populates="feedback_logs")
 
 
 class SessionDecision(UUIDMixin, Base):
@@ -52,7 +50,5 @@ class SessionDecision(UUIDMixin, Base):
         sa.DateTime(timezone=True), server_default=func.now()
     )
 
-    session: Mapped[Session] = relationship(
-        back_populates="session_decisions"
-    )
+    session: Mapped[Session] = relationship(back_populates="session_decisions")
     user: Mapped[User] = relationship()

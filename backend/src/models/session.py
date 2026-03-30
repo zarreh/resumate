@@ -36,9 +36,7 @@ class Session(UUIDMixin, TimestampMixin, Base):
     enhanced_resume: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # type: ignore[type-arg]
 
     user: Mapped[User] = relationship(back_populates="sessions")
-    job_description: Mapped[JobDescription] = relationship(
-        back_populates="sessions"
-    )
+    job_description: Mapped[JobDescription] = relationship(back_populates="sessions")
     tailored_resumes: Mapped[list[TailoredResume]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )

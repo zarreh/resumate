@@ -29,6 +29,4 @@ class JobDescription(UUIDMixin, TimestampMixin, Base):
     embedding = mapped_column(Vector(1536), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="job_descriptions")
-    sessions: Mapped[list[Session]] = relationship(
-        back_populates="job_description"
-    )
+    sessions: Mapped[list[Session]] = relationship(back_populates="job_description")

@@ -27,7 +27,5 @@ class CoverLetter(UUIDMixin, TimestampMixin, Base):
     )
     content: Mapped[str] = mapped_column(Text)
 
-    session: Mapped[Session] = relationship(
-        back_populates="cover_letters"
-    )
+    session: Mapped[Session] = relationship(back_populates="cover_letters")
     user: Mapped[User] = relationship()

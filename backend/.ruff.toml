@@ -5,5 +5,9 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
+[lint.per-file-ignores]
+"src/api/*.py" = ["B008"]
+"src/core/dependencies.py" = ["B008"]
+
 [lint.isort]
 known-first-party = ["src"]

@@ -33,9 +33,7 @@ async def test_query_user(db_session):
     db_session.add(user)
     await db_session.flush()
 
-    result = await db_session.execute(
-        select(User).where(User.email == "query@example.com")
-    )
+    result = await db_session.execute(select(User).where(User.email == "query@example.com"))
     fetched = result.scalar_one()
     assert fetched.name == "Query"
     assert fetched.id == user.id
@@ -124,9 +122,7 @@ async def test_job_description(db_session):
     db_session.add(jd)
     await db_session.flush()
 
-    result = await db_session.execute(
-        select(JobDescription).where(JobDescription.id == jd.id)
-    )
+    result = await db_session.execute(select(JobDescription).where(JobDescription.id == jd.id))
     fetched = result.scalar_one()
     assert fetched.analysis["role_title"] == "Software Engineer"
 

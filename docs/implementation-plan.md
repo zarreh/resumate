@@ -378,6 +378,25 @@ app.include_router(health_router, prefix="/api/v1", tags=["health"])
 - Store refresh tokens hashed (not plaintext) in the DB
 - Test conftest needs an isolated test database (use `testcontainers` or a test DB URL)
 
+### Retrospective (1.4)
+
+**What changed from the plan:**
+- Used `bcrypt` directly instead of `passlib[bcrypt]`. passlib is unmaintained and incompatible with bcrypt 4.1+ (missing `__about__` module, 72-byte password limit enforcement). `bcrypt.hashpw()` and `bcrypt.checkpw()` replace `passlib.CryptContext`.
+- Added `GET /api/v1/auth/me` endpoint (not in original plan) as the protected endpoint to verify auth works. Returns the current user's info.
+- Added `email-validator ^2.1` to dependencies — required by Pydantic's `EmailStr` type.
+- Added ruff per-file ignore for B008 (`Depends()` in defaults) on `src/api/*.py` and `src/core/dependencies.py` — standard FastAPI pattern.
+- Refresh tokens implement rotation: using a refresh token deletes it and issues a new one. Reusing an old token returns 401.
+- Test conftest creates a module-level `_test_engine` with `NullPool` and overrides `get_db` globally on the app. Tests use `registered_user` fixture (registers via API) instead of inserting directly into DB, avoiding async session sharing issues with httpx ASGI transport.
+
+**Gotchas discovered:**
+- **passlib + bcrypt 5.0 incompatibility**: bcrypt 4.1+ removed `bcrypt.__about__` which passlib relies on for version detection. Also bcrypt 4.2+ enforces the 72-byte password limit strictly, causing `ValueError` on passlib's internal wrap-bug detection (which uses a 200+ byte test string). Solution: use bcrypt directly.
+- **httpx ASGITransport + SQLAlchemy session sharing**: The ASGI transport creates requests in the same event loop but different async contexts. Overriding `get_db` to return the same session object from the fixture causes "invalid transaction state" errors after commits. Solution: override `get_db` with a factory that creates fresh sessions from the test engine, and use API-based fixtures (`registered_user`) instead of direct DB insertion.
+- **`HTTPBearer` returns 403 (not 401) when no credentials are provided** — this is Starlette's default behavior when the `Authorization` header is missing entirely.
+
+**Adjustments for upcoming sub-phases:**
+- Phase 1.5 (frontend) can use the auth API as-is. The `/api/v1/auth/me` endpoint is useful for verifying token validity on page load.
+- The `passlib` dependency can be removed from `pyproject.toml` in a future cleanup — it's no longer imported anywhere. Left in place to avoid unnecessary churn.
+
 ---
 
 ### 1.5 — Next.js Frontend Scaffolding
