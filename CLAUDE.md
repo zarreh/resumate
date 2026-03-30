@@ -51,3 +51,4 @@ resumate/
 - [x] 1.5 — Next.js Frontend Scaffolding
 - [x] 1.6 — WebSocket Streaming Infrastructure
 - [x] 2.2a — LLM Config Infrastructure
+- [x] 2.1 — Resume Upload & Text Extraction

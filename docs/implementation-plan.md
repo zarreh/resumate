@@ -646,6 +646,22 @@ async def import_resume(
 - Two-column PDFs: `pymupdf` may interleave columns. Use `sort=True` in `get_text()` for basic column detection
 - Very large files: set upload size limit (e.g., 10MB)
 
+### Retrospective (2.1)
+
+**What changed from the plan:**
+- File names match the plan exactly: `backend/src/api/career.py`, `backend/src/services/resume_extractor.py`, `backend/src/schemas/career.py`
+- No test fixtures directory created — tests generate PDF and DOCX files programmatically using `pymupdf` and `python-docx`, which is cleaner than shipping binary fixtures
+- Added TXT support alongside PDF and DOCX (the endpoint accepts `text/plain` as well)
+- The `ImportResponse` schema returns `filename`, `content_type`, `text`, and `char_count` — structured resume parsing deferred to Phase 2.2b as planned
+- Custom exception hierarchy (`UnsupportedFileTypeError`, `FileTooLargeError`, `ExtractionError`) maps to HTTP 400/413/422
+
+**Gotchas discovered:**
+- `pymupdf.open(stream=...)` raises generic `Exception` for corrupt data, not a specific PDF error — wrapped in `ExtractionError`
+- Latin-1 fallback encoding test: em-dash `—` is not valid Latin-1 (only code points 0-255), need to use actual Latin-1 bytes for the test
+- Dependencies `pymupdf`, `python-docx`, and `python-multipart` were already in `pyproject.toml`
+
+**Test coverage:** 17 new tests (12 unit for extractor + 5 integration for endpoint), total suite: 69 tests passing
+
 ---
 
 ### 2.2a — LLM Config Infrastructure
