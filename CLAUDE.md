@@ -49,4 +49,4 @@ resumate/
 - [x] 1.3 — Database Schema & Migrations
 - [x] 1.4 — FastAPI Skeleton + Auth
 - [x] 1.5 — Next.js Frontend Scaffolding
-- [ ] 1.6 — WebSocket Streaming Infrastructure
+- [x] 1.6 — WebSocket Streaming Infrastructure

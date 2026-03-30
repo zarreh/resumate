@@ -574,6 +574,26 @@ function useWebSocket(sessionId: string, token: string) {
 - WebSocket auth: can't use `Authorization` header with browser WebSocket API — pass token as query param `?token=xxx`
 - LangGraph streaming callbacks will be wired in Phase 4; this phase sets up the transport layer only
 
+### Retrospective (1.6)
+
+**What changed from the plan:**
+- Frontend `useWebSocket` hook takes `sessionId: string | null` instead of `(sessionId: string, token: string)`. The token is read from `localStorage` via the existing `getAccessToken()` helper, keeping the hook's API simpler and consistent with `AuthProvider`.
+- Hook also exposes `sendMessage()` for client-to-server messages and `lastError` for error state.
+- `_authenticate_ws` resolves `get_db` via `app.dependency_overrides` to support test engine overrides. Direct calls to `get_db()` bypass FastAPI's DI, so the WS auth function checks `app.dependency_overrides.get(get_db, get_db)` to pick up test overrides.
+- `StreamManager` is a module-level singleton (`stream_manager`), not dependency-injected — it's pure in-memory state with no DB dependency.
+- Reconnection uses exponential back-off (delay × attempt number) up to `MAX_RECONNECT_ATTEMPTS=5`.
+
+**Gotchas discovered:**
+- **Starlette `TestClient` + asyncpg event loop conflict**: When using `TestClient` (sync) for WS tests, each `TestClient` context creates its own anyio `BlockingPortal` with a fresh event loop. The `_test_engine` from conftest.py (with `NullPool`) creates asyncpg connections that bind to the event loop of whichever portal they're created in. If user registration and WS connection happen in different `TestClient` contexts, the second context gets "attached to a different loop" errors. **Fix**: register and connect within the same `TestClient` context.
+- **`ws.portal.call(coroutine)` is the correct way to run async code inside a TestClient WS context**. `anyio.from_thread.run()` fails because the test thread is not an anyio worker thread. The `WebSocketTestSession.portal` attribute provides access to the blocking portal.
+- **React 19 ESLint `react-hooks/refs` rule**: Cannot mutate `ref.current` during render. Using a ref to track the latest `sessionId` value (to avoid stale closures in `useCallback`) triggers this. **Fix**: define the `connect` function inside `useEffect` directly, capturing `sessionId` from the effect's closure, rather than using `useCallback` + ref.
+- **React 19 ESLint `react-hooks/immutability` rule**: `useCallback` cannot reference a function variable (like `connect`) that is declared later in the same scope — it's treated as "accessing before declaration". **Fix**: same as above — declare `connect` inside `useEffect`.
+
+**Adjustments for upcoming sub-phases:**
+- Future agents that stream events should import `stream_manager` from `src.services.stream_manager` and call `await stream_manager.emit(session_id, WSEvent(...))`.
+- The `useWebSocket` hook auto-connects when `sessionId` is non-null — no manual `connect()` call needed. Consumers use `events`, `streamingText`, `progress`, `currentAgent`, etc.
+- The frontend WS base URL is derived from `NEXT_PUBLIC_API_URL` by replacing `http` with `ws`.
+
 ---
 
 ## Phase 2: Career History
