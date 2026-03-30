@@ -1,0 +1,29 @@
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+  anthropic:
+    api_key: ${ANTHROPIC_API_KEY}
+
+models:
+  gpt4o:
+    provider: openai
+    model: gpt-4o
+  gpt4o-mini:
+    provider: openai
+    model: gpt-4o-mini
+  claude-sonnet:
+    provider: anthropic
+    model: claude-sonnet-4-6
+  embedding:
+    provider: openai
+    model: text-embedding-3-small
+
+agent_models:
+  job_analyst: gpt4o-mini
+  resume_writer: gpt4o
+  reviewer: gpt4o
+  fact_checker: gpt4o-mini
+  chat_agent: gpt4o
+  ats_scoring: gpt4o-mini
+  resume_parser: gpt4o
+  cover_letter: gpt4o

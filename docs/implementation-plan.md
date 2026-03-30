@@ -721,6 +721,22 @@ agent_models:
 - Missing env var raises clear error
 - Tests mock env vars and verify correct model instantiation
 
+### Retrospective (2.2a)
+
+**What changed from the plan:**
+- Added `get_llm_config()` singleton factory (with `@lru_cache`) that loads from `settings.llm_config_path` — avoids re-reading YAML on every call.
+- `get_chat_model()` accepts optional `temperature` and `streaming` (default `True`) kwargs, giving agents per-call control.
+- API keys are passed explicitly to model constructors (not via env vars) since they come from the YAML config via `${ENV_VAR}` resolution.
+- `config/llm.yaml` is committed as-is (identical to `.example`) since it contains only `${ENV_VAR}` placeholders, not real keys.
+
+**Gotchas discovered:**
+- Ruff UP024 requires `OSError` instead of `EnvironmentError` (they're aliases in Python 3, but ruff enforces the canonical name).
+- LangChain model constructors accept `api_key` as a string directly — no need for env var names or separate credential objects.
+
+**Adjustments for upcoming sub-phases:**
+- All agents (2.2b resume parser, 3.1 job analyst, 4.1 resume writer, etc.) should use `get_llm_config().get_chat_model("agent_name")` to get their model instances.
+- Tests can create a `LLMConfig` from a temp YAML file with monkeypatched env vars — no real API keys needed for unit tests.
+
 ---
 
 ### 2.2b — LLM-Based Resume Parsing
