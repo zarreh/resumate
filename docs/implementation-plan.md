@@ -798,6 +798,26 @@ Use `model.with_structured_output()` for reliable JSON output.
 - Entries are stored in DB with embeddings
 - Tests with mocked LLM responses verify correct parsing
 
+### Retrospective (2.2b)
+
+**What changed from the plan:**
+- `ResumeParser` does NOT include `generate_embeddings()` — embedding generation is deferred to Phase 2.4 (career entry CRUD) where entries are persisted to DB. The parser is a pure text→structured-data transformation.
+- Added `ParsedBulletPoint` as a nested schema with per-bullet `tags` extraction (not in original plan). This gives finer-grained skill tracking per achievement.
+- Added `POST /api/v1/career/parse` endpoint (not originally planned for 2.2b, but needed to expose parsing via API). Takes `{"text": "..."}` body, returns structured entries.
+- Added `CareerEntryCreate`, `CareerEntryUpdate`, `CareerEntryResponse` schemas to `career.py` in preparation for Phase 2.4 CRUD endpoints.
+- Used `model.with_structured_output(ParsedResumeOutput)` wrapper — the LLM returns a `ParsedResumeOutput` with an `entries` list, which is more reliable than asking for a raw list.
+- Temperature set to 0.0 and streaming disabled for deterministic parsing.
+
+**Gotchas discovered:**
+- LangChain's `with_structured_output()` may return either a Pydantic model or a dict depending on the provider/model. Parser handles both cases.
+- The `ResumeParser` is instantiated per-request (not a singleton) since it depends on `LLMConfig` which reads env vars — allows tests to inject mock configs easily.
+
+**Test coverage:** 12 new tests (7 unit for parser, 2 schema, 3 integration for endpoint), total suite: 81 tests passing.
+
+**Adjustments for upcoming sub-phases:**
+- Phase 2.4 should use `CareerEntryCreate`/`CareerEntryUpdate`/`CareerEntryResponse` schemas already defined in `career.py`.
+- Embedding generation should happen in the career service layer (Phase 2.4) when entries are created/updated, not in the parser.
+
 ---
 
 ### 2.3 — Career History UI (Frontend)

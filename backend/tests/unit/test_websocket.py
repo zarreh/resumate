@@ -8,7 +8,6 @@ from src.main import app
 from src.schemas.ws_events import WSEvent
 from src.services.stream_manager import StreamManager, stream_manager
 
-
 # ---------------------------------------------------------------------------
 # Unit tests for StreamManager (no real WebSocket needed)
 # ---------------------------------------------------------------------------
