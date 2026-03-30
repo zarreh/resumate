@@ -1,0 +1,13 @@
+# Dependency directories
+node_modules
+.next
+
+# Version control
+.git
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store

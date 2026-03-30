@@ -481,6 +481,27 @@ export async function apiClient<T>(path: string, options?: RequestInit): Promise
 - shadcn/ui requires initial setup with `npx shadcn-ui@latest init`
 - CORS: backend must allow `http://localhost:3000`
 
+### Retrospective (1.5)
+
+**What changed from the plan:**
+- Used Next.js 16.2.1 (latest) with Tailwind v4 (not v3). Tailwind v4 uses `@import "tailwindcss"` in CSS instead of a `tailwind.config.ts`. shadcn/ui v4.1 supports this natively.
+- shadcn/ui uses Base UI (`@base-ui/react`) instead of Radix. This means `asChild` prop is replaced by `render` prop for composing trigger elements.
+- `toast` component is deprecated in shadcn/ui v4 — replaced by `sonner` component.
+- Removed auto-generated `AGENTS.md` and `CLAUDE.md` that `create-next-app` v16 creates in the project root.
+- Used a single `AuthForm` component for both login and register pages (mode prop) instead of a separate `LoginForm.tsx`.
+- `components.json` uses `"style": "base-nova"` (new shadcn default), not the Radix-based `"default"` style.
+- Docker frontend service uses anonymous volumes for `node_modules` and `.next` to avoid host bind-mount conflicts.
+
+**Gotchas discovered:**
+- **React 19 ESLint `react-hooks/set-state-in-effect` rule**: Very strict — disallows any `setState` call within a `useEffect` body, even through `.then()` callbacks. Workaround: use lazy state initializer (`useState(hasStoredToken)`) so the effect body only runs the async path (where setState in `.then()` callbacks is acceptable).
+- **Next.js 16 + Tailwind v4**: No `tailwind.config.ts` file. All theme customization happens via `@theme inline {}` in `globals.css`. CSS variables use oklch color space.
+- **shadcn/ui v4 Base UI pattern**: Triggers use `render` prop (e.g., `<SheetTrigger render={<Button />}>children</SheetTrigger>`) instead of the Radix `asChild` pattern.
+
+**Adjustments for upcoming sub-phases:**
+- Phase 1.6 (WebSocket) should use the `render` prop pattern when composing shadcn/ui trigger elements.
+- The `lucide-react` icon library is already installed (via shadcn/ui).
+- `NEXT_PUBLIC_API_URL` environment variable is used by the frontend API client. Set to `http://localhost:8000` for Docker Compose.
+
 ---
 
 ### 1.6 — WebSocket Streaming Infrastructure

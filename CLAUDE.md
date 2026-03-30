@@ -48,5 +48,5 @@ resumate/
 - [x] 1.2 — Docker Compose Setup
 - [x] 1.3 — Database Schema & Migrations
 - [x] 1.4 — FastAPI Skeleton + Auth
-- [ ] 1.5 — Next.js Frontend Scaffolding
+- [x] 1.5 — Next.js Frontend Scaffolding
 - [ ] 1.6 — WebSocket Streaming Infrastructure
