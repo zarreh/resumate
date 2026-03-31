@@ -26,6 +26,7 @@ class JobDescription(UUIDMixin, TimestampMixin, Base):
     )
     raw_text: Mapped[str] = mapped_column(Text)
     analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # type: ignore[type-arg]
+    company_research: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # type: ignore[type-arg]
     embedding = mapped_column(Vector(1536), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="job_descriptions")
