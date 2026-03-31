@@ -1302,6 +1302,18 @@ backend/src/agents/resume_writer/agent.py        # Revision mode: rewrite reject
 - "Approve All" advances to Gate 4
 - Feedback is logged in `feedback_log` table
 
+### Retrospective (4.3b)
+
+**What changed from the plan:**
+- `POST /api/v1/sessions/{id}/feedback` endpoint added — accepts a list of `BulletDecision` objects (approved/rejected/edited) and returns a `FeedbackResponse` with the updated resume and list of revised bullet IDs.
+- Three decision types: `approved` (no-op), `rejected` (triggers LLM revision), `edited` (applies user's text directly).
+- Revision flow: rejected bullets are sent to the Resume Writer in calibration mode with feedback context. The agent regenerates the full resume, but only rejected bullets are merged back into the current resume via `_merge_revisions()` helper.
+- Feedback is logged to `feedback_logs` table (one row per bullet decision) before any revision happens.
+- Frontend review page updated with: "Submit Feedback" button in status bar, `handleBulletEdit` for direct edits, `submitFeedback` API call, post-revision state reset (revised bullets return to "pending").
+- `feedbackTexts` state added for per-bullet rejection text (wired to UI but not yet exposed as an input field — users use the reject button toggle; detailed feedback text can be added in a future UX iteration).
+
+**Test coverage:** 9 new tests (5 helper function tests + 4 endpoint tests), total suite: 163 tests passing.
+
 ---
 
 ### 4.4 — LaTeX PDF Generation

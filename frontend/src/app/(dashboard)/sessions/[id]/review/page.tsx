@@ -3,9 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { FullDraftView } from "@/components/session/FullDraftView";
 import { GateApprovalBar } from "@/components/session/GateApprovalBar";
-import { approveGate, getSession } from "@/lib/api/session";
+import {
+  approveGate,
+  getSession,
+  submitFeedback,
+  type BulletDecision,
+} from "@/lib/api/session";
 import type { EnhancedResume, SessionResponse } from "@/types/session";
 
 export default function ReviewPage() {
@@ -17,9 +23,13 @@ export default function ReviewPage() {
   const [resume, setResume] = useState<EnhancedResume | null>(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [bulletStatuses, setBulletStatuses] = useState<
     Record<string, "pending" | "approved" | "rejected">
   >({});
+  const [feedbackTexts, setFeedbackTexts] = useState<Record<string, string>>(
+    {}
+  );
 
   const fetchSession = useCallback(async () => {
     try {
@@ -27,7 +37,6 @@ export default function ReviewPage() {
       setSession(data);
       if (data.enhanced_resume) {
         setResume(data.enhanced_resume);
-        // Default all bullets to "pending"
         const statuses: Record<string, "pending"> = {};
         for (const section of data.enhanced_resume.sections) {
           for (const entry of section.entries) {
@@ -63,9 +72,61 @@ export default function ReviewPage() {
     }));
   };
 
+  const handleBulletEdit = (bulletId: string, text: string) => {
+    // Apply edit directly to the resume state
+    if (!resume) return;
+    const updated = { ...resume };
+    updated.sections = updated.sections.map((s) => ({
+      ...s,
+      entries: s.entries.map((e) => ({
+        ...e,
+        bullets: e.bullets.map((b) =>
+          b.id === bulletId ? { ...b, enhanced_text: text } : b
+        ),
+      })),
+    }));
+    setResume(updated);
+    setBulletStatuses((prev) => ({ ...prev, [bulletId]: "approved" }));
+  };
+
   const handleSkillsChange = (skills: string[]) => {
     if (resume) {
       setResume({ ...resume, skills });
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    setSubmittingFeedback(true);
+    try {
+      const decisions: BulletDecision[] = Object.entries(bulletStatuses)
+        .filter(([, status]) => status !== "pending")
+        .map(([bulletId, status]) => ({
+          bullet_id: bulletId,
+          decision: status as "approved" | "rejected",
+          feedback_text:
+            status === "rejected" ? feedbackTexts[bulletId] : undefined,
+        }));
+
+      const result = await submitFeedback(sessionId, decisions);
+      const updatedResume = result.resume as unknown as EnhancedResume;
+      setResume(updatedResume);
+
+      // Reset rejected bullets to pending (they've been revised)
+      setBulletStatuses((prev) => {
+        const next = { ...prev };
+        for (const id of result.revised_bullet_ids) {
+          next[id] = "pending";
+        }
+        return next;
+      });
+
+      toast.success(
+        `Feedback submitted. ${result.revised_bullet_ids.length} bullets revised.`
+      );
+    } catch {
+      toast.error("Failed to submit feedback");
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -82,7 +143,6 @@ export default function ReviewPage() {
     }
   };
 
-  // Count statuses
   const approvedCount = Object.values(bulletStatuses).filter(
     (s) => s === "approved"
   ).length;
@@ -137,6 +197,20 @@ export default function ReviewPage() {
               <strong>{totalCount - approvedCount - rejectedCount}</strong>{" "}
               pending
             </span>
+
+            {rejectedCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSubmitFeedback}
+                disabled={submittingFeedback}
+                className="ml-auto"
+              >
+                {submittingFeedback
+                  ? "Revising..."
+                  : `Submit Feedback (${rejectedCount} rejected)`}
+              </Button>
+            )}
           </div>
 
           {/* Full draft */}
@@ -146,6 +220,7 @@ export default function ReviewPage() {
             showControls
             onBulletApprove={handleBulletApprove}
             onBulletReject={handleBulletReject}
+            onBulletEdit={handleBulletEdit}
             onSkillsChange={handleSkillsChange}
           />
         </div>
@@ -155,7 +230,7 @@ export default function ReviewPage() {
       <GateApprovalBar
         onApprove={handleApprove}
         loading={approving}
-        disabled={rejectedCount > 0}
+        disabled={rejectedCount > 0 || submittingFeedback}
         label={
           rejectedCount > 0
             ? `${rejectedCount} rejected — submit feedback first`

@@ -778,3 +778,267 @@ class TestResumeSessionService:
         assert resp.status_code == 200
         session_data = resp.json()
         assert session_data["id"] == session_id
+
+
+# ---------------------------------------------------------------------------
+# Helper function tests
+# ---------------------------------------------------------------------------
+
+
+class TestFeedbackHelpers:
+    """Tests for the feedback helper functions."""
+
+    def test_find_bullet_text(self) -> None:
+        from src.api.sessions import _find_bullet_text
+
+        text = _find_bullet_text(SAMPLE_RESUME, "0_0")
+        assert "Designed and implemented" in text
+
+    def test_find_bullet_text_not_found(self) -> None:
+        from src.api.sessions import _find_bullet_text
+
+        text = _find_bullet_text(SAMPLE_RESUME, "nonexistent")
+        assert text == "(not found)"
+
+    def test_apply_edit(self) -> None:
+        from src.api.sessions import _apply_edit
+
+        resume = SAMPLE_RESUME.model_copy(deep=True)
+        _apply_edit(resume, "0_0", "New bullet text")
+        found = False
+        for s in resume.sections:
+            for e in s.entries:
+                for b in e.bullets:
+                    if b.id == "0_0":
+                        assert b.enhanced_text == "New bullet text"
+                        found = True
+        assert found
+
+    def test_merge_revisions(self) -> None:
+        from src.api.sessions import _merge_revisions
+
+        current = SAMPLE_RESUME.model_copy(deep=True)
+        # Create a revised resume with different text for bullet 0_0
+        revised = SAMPLE_RESUME.model_copy(deep=True)
+        for s in revised.sections:
+            for e in s.entries:
+                for b in e.bullets:
+                    if b.id == "0_0":
+                        b.enhanced_text = "Revised bullet text"
+
+        updated = _merge_revisions(current, revised, ["0_0"])
+        assert "0_0" in updated
+        # Verify current was updated
+        for s in current.sections:
+            for e in s.entries:
+                for b in e.bullets:
+                    if b.id == "0_0":
+                        assert b.enhanced_text == "Revised bullet text"
+
+    def test_merge_revisions_no_match(self) -> None:
+        from src.api.sessions import _merge_revisions
+
+        current = SAMPLE_RESUME.model_copy(deep=True)
+        revised = SAMPLE_RESUME.model_copy(deep=True)
+
+        updated = _merge_revisions(current, revised, ["nonexistent"])
+        assert updated == []
+
+
+# ---------------------------------------------------------------------------
+# Feedback endpoint tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestFeedbackEndpoint:
+    """Tests for the POST /sessions/{id}/feedback endpoint."""
+
+    async def _create_session_with_resume(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> str:
+        """Helper: create a session and generate a resume on it."""
+        with patch("src.api.sessions.get_llm_config") as mock_config:
+            mock_config.return_value = MagicMock()
+
+            # Start session
+            mock_analyst = MagicMock()
+            mock_analyst.analyze = AsyncMock(return_value=SAMPLE_ANALYSIS)
+            with patch("src.api.sessions.JobAnalystAgent", return_value=mock_analyst):
+                resp = await client.post(
+                    "/api/v1/sessions/start",
+                    json={"text": "Engineer..."},
+                    headers=auth_headers,
+                )
+                session_id = resp.json()["id"]
+
+            # Approve analysis
+            await client.post(
+                f"/api/v1/sessions/{session_id}/approve",
+                json={"gate": "analysis", "selected_entry_ids": ["entry-1"]},
+                headers=auth_headers,
+            )
+
+            # Generate resume
+            with (
+                patch("src.api.sessions.RetrievalService") as mock_ret_cls,
+                patch("src.api.sessions.MatchScorer") as mock_sc_cls,
+                patch("src.api.sessions.ResumeWriterAgent") as mock_wr_cls,
+            ):
+                mock_ret = MagicMock()
+                mock_ret.embed_job_description = AsyncMock()
+                mock_ret.embed_all_entries = AsyncMock()
+                mock_ret.find_relevant_entries = AsyncMock(return_value=SAMPLE_ENTRIES)
+                mock_ret_cls.return_value = mock_ret
+                mock_sc = MagicMock()
+                mock_sc.score.return_value = SAMPLE_MATCH
+                mock_sc_cls.return_value = mock_sc
+                mock_wr = MagicMock()
+                mock_wr.write = AsyncMock(return_value=SAMPLE_RESUME)
+                mock_wr_cls.return_value = mock_wr
+
+                resp = await client.post(
+                    f"/api/v1/sessions/{session_id}/generate",
+                    json={},
+                    headers=auth_headers,
+                )
+                assert resp.status_code == 200
+
+        return session_id
+
+    @patch("src.api.sessions.get_llm_config")
+    async def test_feedback_approve_only(
+        self,
+        mock_config: MagicMock,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Submitting only approvals returns the same resume."""
+        mock_config.return_value = MagicMock()
+        session_id = await self._create_session_with_resume(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/sessions/{session_id}/feedback",
+            json={
+                "decisions": [
+                    {"bullet_id": "0_0", "decision": "approved"},
+                    {"bullet_id": "0_1", "decision": "approved"},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["revised_bullet_ids"] == []
+
+    @patch("src.api.sessions.get_llm_config")
+    async def test_feedback_edit(
+        self,
+        mock_config: MagicMock,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Submitting edits applies new text directly."""
+        mock_config.return_value = MagicMock()
+        session_id = await self._create_session_with_resume(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/sessions/{session_id}/feedback",
+            json={
+                "decisions": [
+                    {
+                        "bullet_id": "0_0",
+                        "decision": "edited",
+                        "edited_text": "My custom bullet text",
+                    },
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "0_0" in data["revised_bullet_ids"]
+
+    @patch("src.api.sessions.RetrievalService")
+    @patch("src.api.sessions.MatchScorer")
+    @patch("src.api.sessions.ResumeWriterAgent")
+    @patch("src.api.sessions.get_llm_config")
+    async def test_feedback_reject_triggers_revision(
+        self,
+        mock_config: MagicMock,
+        mock_writer_cls: MagicMock,
+        mock_scorer_cls: MagicMock,
+        mock_retrieval_cls: MagicMock,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Submitting rejections triggers LLM revision."""
+        mock_config.return_value = MagicMock()
+        session_id = await self._create_session_with_resume(client, auth_headers)
+
+        # Mock the revision call
+        revised_resume = SAMPLE_RESUME.model_copy(deep=True)
+        for s in revised_resume.sections:
+            for e in s.entries:
+                for b in e.bullets:
+                    if b.id == "0_0":
+                        b.enhanced_text = "Revised by LLM"
+
+        mock_ret = MagicMock()
+        mock_ret.embed_job_description = AsyncMock()
+        mock_ret.embed_all_entries = AsyncMock()
+        mock_ret.find_relevant_entries = AsyncMock(return_value=SAMPLE_ENTRIES)
+        mock_retrieval_cls.return_value = mock_ret
+        mock_sc = MagicMock()
+        mock_sc.score.return_value = SAMPLE_MATCH
+        mock_scorer_cls.return_value = mock_sc
+        mock_wr = MagicMock()
+        mock_wr.write = AsyncMock(return_value=revised_resume)
+        mock_writer_cls.return_value = mock_wr
+
+        resp = await client.post(
+            f"/api/v1/sessions/{session_id}/feedback",
+            json={
+                "decisions": [
+                    {
+                        "bullet_id": "0_0",
+                        "decision": "rejected",
+                        "feedback_text": "Too vague, be more specific",
+                    },
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "0_0" in data["revised_bullet_ids"]
+
+    @patch("src.api.sessions.get_llm_config")
+    async def test_feedback_no_resume(
+        self,
+        mock_config: MagicMock,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Feedback on session without resume returns 400."""
+        mock_config.return_value = MagicMock()
+
+        # Create session without generating resume
+        mock_analyst = MagicMock()
+        mock_analyst.analyze = AsyncMock(return_value=SAMPLE_ANALYSIS)
+        with patch("src.api.sessions.JobAnalystAgent", return_value=mock_analyst):
+            resp = await client.post(
+                "/api/v1/sessions/start",
+                json={"text": "Engineer..."},
+                headers=auth_headers,
+            )
+            session_id = resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/sessions/{session_id}/feedback",
+            json={"decisions": [{"bullet_id": "0_0", "decision": "approved"}]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400

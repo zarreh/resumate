@@ -89,3 +89,32 @@ export async function generateResume(
     }
   );
 }
+
+// ---------------------------------------------------------------------------
+// Bullet feedback
+// ---------------------------------------------------------------------------
+
+export interface BulletDecision {
+  bullet_id: string;
+  decision: "approved" | "rejected" | "edited";
+  feedback_text?: string;
+  edited_text?: string;
+}
+
+export interface FeedbackResponse {
+  resume: Record<string, unknown>;
+  revised_bullet_ids: string[];
+}
+
+export async function submitFeedback(
+  sessionId: string,
+  decisions: BulletDecision[]
+): Promise<FeedbackResponse> {
+  return apiClient<FeedbackResponse>(
+    `/api/v1/sessions/${sessionId}/feedback`,
+    {
+      method: "POST",
+      body: JSON.stringify({ decisions }),
+    }
+  );
+}

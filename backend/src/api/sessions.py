@@ -12,6 +12,7 @@ from src.agents.job_analyst import JobAnalystAgent
 from src.agents.resume_writer import ResumeWriterAgent
 from src.core.database import get_db
 from src.core.dependencies import get_current_user
+from src.models.feedback import FeedbackLog
 from src.models.user import User
 from src.schemas.job import JDAnalysis
 from src.schemas.matching import MatchResult, RankedEntry
@@ -337,3 +338,206 @@ async def generate_resume(
     await resume_svc.store_enhanced_resume(session, resume)
 
     return EnhancedResumeResponse(resume=resume.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# Bullet feedback and revision
+# ---------------------------------------------------------------------------
+
+
+class BulletDecision(BaseModel):
+    """A single bullet's review decision."""
+
+    bullet_id: str
+    decision: str = Field(pattern="^(approved|rejected|edited)$")
+    feedback_text: str | None = None
+    edited_text: str | None = None
+
+
+class FeedbackRequest(BaseModel):
+    """Submit review decisions for bullets in a session."""
+
+    decisions: list[BulletDecision]
+
+
+class FeedbackResponse(BaseModel):
+    """Response after processing feedback — returns revised resume."""
+
+    resume: dict  # type: ignore[type-arg]
+    revised_bullet_ids: list[str]
+
+
+@router.post("/{session_id}/feedback", response_model=FeedbackResponse)
+async def submit_feedback(
+    session_id: uuid.UUID,
+    body: FeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> FeedbackResponse:
+    """Submit bullet-level feedback and get revised resume."""
+    svc = JobService(db)
+    resume_svc = ResumeSessionService(db)
+
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    current_resume = await resume_svc.get_enhanced_resume(session)
+    if current_resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No enhanced resume exists on this session",
+        )
+
+    # 1. Log all feedback
+    for d in body.decisions:
+        log = FeedbackLog(
+            session_id=session.id,
+            bullet_id=d.bullet_id,
+            decision=d.decision,
+            feedback_text=d.feedback_text,
+        )
+        db.add(log)
+    await db.commit()
+
+    # 2. Apply edits directly for "edited" decisions
+    edited_ids: list[str] = []
+    for d in body.decisions:
+        if d.decision == "edited" and d.edited_text:
+            _apply_edit(current_resume, d.bullet_id, d.edited_text)
+            edited_ids.append(d.bullet_id)
+
+    # 3. Collect rejected bullets for revision
+    rejected = [d for d in body.decisions if d.decision == "rejected"]
+
+    if not rejected:
+        # No rejections — just save edits and return
+        await resume_svc.store_enhanced_resume(session, current_resume)
+        return FeedbackResponse(
+            resume=current_resume.model_dump(),
+            revised_bullet_ids=edited_ids,
+        )
+
+    # 4. Build revision context and regenerate rejected bullets
+    jd = await svc.get_job_description(current_user.id, session.job_description_id)
+    if jd is None or jd.analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description has no analysis",
+        )
+
+    jd_analysis = JDAnalysis.model_validate(jd.analysis)
+
+    # Build feedback string for the LLM
+    feedback_parts = []
+    for d in rejected:
+        bullet_text = _find_bullet_text(current_resume, d.bullet_id)
+        feedback_parts.append(
+            f"Bullet '{d.bullet_id}' ({bullet_text}): "
+            f"REJECTED — {d.feedback_text or 'no specific feedback'}"
+        )
+
+    revision_feedback = (
+        "The user rejected the following bullets. Rewrite ONLY these bullets "
+        "while keeping all other bullets unchanged:\n\n"
+        + "\n".join(feedback_parts)
+    )
+
+    # Get Match data for context
+    llm_config = get_llm_config()
+    retrieval = RetrievalService(db, llm_config)
+
+    if jd.embedding is None:
+        await retrieval.embed_job_description(jd)
+        await db.refresh(jd)
+    await retrieval.embed_all_entries(current_user.id)
+
+    jd_embedding = list(jd.embedding) if jd.embedding is not None else []
+    ranked = await retrieval.find_relevant_entries(
+        current_user.id, jd_embedding, top_k=20
+    )
+
+    selected_ids = set(session.selected_entry_ids or [])
+    if selected_ids:
+        ranked = [e for e in ranked if e.entry_id in selected_ids]
+
+    scorer = MatchScorer()
+    match_result = scorer.score(jd_analysis, ranked)
+
+    try:
+        agent = ResumeWriterAgent(llm_config)
+        revised_resume = await agent.write(
+            jd_analysis=jd_analysis,
+            ranked_entries=ranked,
+            match_result=match_result,
+            context_text=session.context_text or "",
+            style_feedback=revision_feedback,
+            mode="calibration",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to revise resume: {exc}",
+        ) from exc
+
+    # 5. Merge: only replace rejected bullets in the current resume
+    revised_ids = _merge_revisions(
+        current_resume, revised_resume, [d.bullet_id for d in rejected]
+    )
+
+    await resume_svc.store_enhanced_resume(session, current_resume)
+
+    return FeedbackResponse(
+        resume=current_resume.model_dump(),
+        revised_bullet_ids=edited_ids + revised_ids,
+    )
+
+
+def _find_bullet_text(resume: EnhancedResume, bullet_id: str) -> str:
+    """Find a bullet's enhanced text by ID."""
+    for section in resume.sections:
+        for entry in section.entries:
+            for bullet in entry.bullets:
+                if bullet.id == bullet_id:
+                    return bullet.enhanced_text
+    return "(not found)"
+
+
+def _apply_edit(resume: EnhancedResume, bullet_id: str, new_text: str) -> None:
+    """Apply a direct text edit to a bullet in the resume."""
+    for section in resume.sections:
+        for entry in section.entries:
+            for bullet in entry.bullets:
+                if bullet.id == bullet_id:
+                    bullet.enhanced_text = new_text
+                    return
+
+
+def _merge_revisions(
+    current: EnhancedResume,
+    revised: EnhancedResume,
+    rejected_ids: list[str],
+) -> list[str]:
+    """Replace rejected bullets in current resume with revised versions.
+
+    Returns list of bullet IDs that were actually updated.
+    """
+    # Build a lookup of revised bullets
+    revised_lookup: dict[str, str] = {}
+    for section in revised.sections:
+        for entry in section.entries:
+            for bullet in entry.bullets:
+                if bullet.id in rejected_ids:
+                    revised_lookup[bullet.id] = bullet.enhanced_text
+
+    updated_ids: list[str] = []
+    for section in current.sections:
+        for entry in section.entries:
+            for bullet in entry.bullets:
+                if bullet.id in revised_lookup:
+                    bullet.enhanced_text = revised_lookup[bullet.id]
+                    updated_ids.append(bullet.id)
+
+    return updated_ids
