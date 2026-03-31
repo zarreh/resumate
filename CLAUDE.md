@@ -67,3 +67,4 @@ resumate/
 - [x] 5.2 — Chat Agent
 - [x] 5.3 — Chat UI (Frontend)
 - [x] 6.1 — Reviewer Agent
+- [x] 6.2 — ATS Scoring

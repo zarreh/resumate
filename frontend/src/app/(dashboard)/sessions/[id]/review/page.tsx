@@ -6,14 +6,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FullDraftView } from "@/components/session/FullDraftView";
 import { GateApprovalBar } from "@/components/session/GateApprovalBar";
+import { ATSScoreCard } from "@/components/session/ATSScoreCard";
 import {
   approveGate,
+  getATSScore,
   getSession,
   reviewResume,
   submitFeedback,
   type BulletDecision,
 } from "@/lib/api/session";
-import type { EnhancedResume, ReviewAnnotation, ReviewReport, SessionResponse } from "@/types/session";
+import type { ATSScore, EnhancedResume, ReviewAnnotation, ReviewReport, SessionResponse } from "@/types/session";
 
 export default function ReviewPage() {
   const params = useParams();
@@ -36,6 +38,8 @@ export default function ReviewPage() {
   const [annotations, setAnnotations] = useState<
     Record<string, ReviewAnnotation[]>
   >({});
+  const [atsScore, setAtsScore] = useState<ATSScore | null>(null);
+  const [scoring, setScoring] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -83,6 +87,19 @@ export default function ReviewPage() {
       toast.error("Failed to run review");
     } finally {
       setReviewing(false);
+    }
+  };
+
+  const handleRunATSScore = async () => {
+    setScoring(true);
+    try {
+      const result = await getATSScore(sessionId);
+      setAtsScore(result.score);
+      toast.success(`ATS Score: ${Math.round(result.score.overall_score)}%`);
+    } catch {
+      toast.error("Failed to calculate ATS score");
+    } finally {
+      setScoring(false);
     }
   };
 
@@ -249,32 +266,45 @@ export default function ReviewPage() {
             >
               {reviewing ? "Reviewing..." : "Run AI Review"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleRunATSScore}
+              disabled={scoring}
+            >
+              {scoring ? "Scoring..." : "ATS Score"}
+            </Button>
           </div>
 
-          {/* Review summary */}
-          {reviewReport && (
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4">
-              <h3 className="text-sm font-semibold">AI Review Summary</h3>
-              <div className="flex gap-4 text-xs">
-                <span className="text-green-600">
-                  <strong>{reviewReport.strong_count}</strong> strong
-                </span>
-                <span className="text-yellow-600">
-                  <strong>{reviewReport.adequate_count}</strong> adequate
-                </span>
-                <span className="text-red-600">
-                  <strong>{reviewReport.weak_count}</strong> weak
-                </span>
-              </div>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>
-                  <strong>Recruiter:</strong> {reviewReport.recruiter_summary}
-                </p>
-                <p>
-                  <strong>Hiring Manager:</strong>{" "}
-                  {reviewReport.hiring_manager_summary}
-                </p>
-              </div>
+          {/* Review summary & ATS score side by side */}
+          {(reviewReport || atsScore) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {reviewReport && (
+                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4">
+                  <h3 className="text-sm font-semibold">AI Review Summary</h3>
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-green-600">
+                      <strong>{reviewReport.strong_count}</strong> strong
+                    </span>
+                    <span className="text-yellow-600">
+                      <strong>{reviewReport.adequate_count}</strong> adequate
+                    </span>
+                    <span className="text-red-600">
+                      <strong>{reviewReport.weak_count}</strong> weak
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <p>
+                      <strong>Recruiter:</strong> {reviewReport.recruiter_summary}
+                    </p>
+                    <p>
+                      <strong>Hiring Manager:</strong>{" "}
+                      {reviewReport.hiring_manager_summary}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {atsScore && <ATSScoreCard score={atsScore} />}
             </div>
           )}
 

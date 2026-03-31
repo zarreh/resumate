@@ -674,3 +674,54 @@ async def review_resume(
         ) from exc
 
     return ReviewResponse(report=report.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# ATS Scoring
+# ---------------------------------------------------------------------------
+
+
+class ATSScoreResponse(BaseModel):
+    """Response containing the ATS score."""
+
+    score: dict = Field(description="Complete ATSScore JSON")  # type: ignore[type-arg]
+
+
+@router.post("/{session_id}/ats-score", response_model=ATSScoreResponse)
+async def ats_score_resume(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ATSScoreResponse:
+    """Run ATS scoring on the session's enhanced resume."""
+    from src.services.ats_scoring import ATSScorer
+
+    svc = JobService(db)
+    resume_svc = ResumeSessionService(db)
+
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    current_resume = await resume_svc.get_enhanced_resume(session)
+    if current_resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No enhanced resume exists on this session",
+        )
+
+    jd = await svc.get_job_description(current_user.id, session.job_description_id)
+    if jd is None or jd.analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description has no analysis",
+        )
+
+    jd_analysis = JDAnalysis.model_validate(jd.analysis)
+
+    scorer = ATSScorer()
+    result = scorer.score(current_resume, jd_analysis)
+
+    return ATSScoreResponse(score=result.model_dump())

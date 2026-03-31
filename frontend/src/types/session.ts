@@ -170,3 +170,28 @@ export interface ReviewReport {
 export interface ReviewResponse {
   report: ReviewReport;
 }
+
+// ---------------------------------------------------------------------------
+// ATS Scoring
+// ---------------------------------------------------------------------------
+
+export interface KeywordMatch {
+  keyword: string;
+  found: boolean;
+  locations: string[];
+}
+
+export interface ATSScore {
+  overall_score: number;
+  keyword_score: number;
+  skills_score: number;
+  format_score: number;
+  keyword_matches: KeywordMatch[];
+  missing_keywords: string[];
+  format_issues: string[];
+  suggestions: string[];
+}
+
+export interface ATSScoreResponse {
+  score: ATSScore;
+}

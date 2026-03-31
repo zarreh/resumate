@@ -2,6 +2,7 @@
 
 import { apiClient } from "../api";
 import type {
+  ATSScoreResponse,
   GenerateResponse,
   JobDescriptionResponse,
   MatchResponse,
@@ -129,6 +130,19 @@ export async function reviewResume(
 ): Promise<ReviewResponse> {
   return apiClient<ReviewResponse>(
     `/api/v1/sessions/${sessionId}/review`,
+    { method: "POST" }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ATS Scoring
+// ---------------------------------------------------------------------------
+
+export async function getATSScore(
+  sessionId: string
+): Promise<ATSScoreResponse> {
+  return apiClient<ATSScoreResponse>(
+    `/api/v1/sessions/${sessionId}/ats-score`,
     { method: "POST" }
   );
 }

@@ -1569,6 +1569,17 @@ frontend/src/types/chat.ts
 - Light LLM call for suggestions
 - `ATSScore` with overall score + keyword gaps + format issues
 
+### Retrospective
+- Implemented as a pure deterministic service (`ATSScorer`) — no LLM call needed for the scoring itself
+- Weighted scoring: keywords 40%, skills 60%/25%/15% (required/preferred/tech), format 15%
+- Keyword matching uses regex against corpus (summary, bullets, skills) with location tracking
+- Format checks: summary length, bullet length, skills count, empty sections
+- Suggestions generated deterministically from missing keywords and low scores
+- Frontend: `ATSScoreCard` with progress bars, missing keywords badges, suggestions list
+- Integrated into Review page alongside AI Review in a side-by-side grid layout
+- API endpoint: `POST /sessions/{id}/ats-score`
+- 16 tests (258 total passing)
+
 ### 6.3 — Diff View Polish
 - Upgrade word-level diff from 4.3a to polished component
 - Side-by-side and unified toggle views
