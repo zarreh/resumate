@@ -29,6 +29,7 @@ class WriterState(TypedDict):
     style_feedback: str
     style_preference: str  # "conservative" | "moderate" | "aggressive"
     mode: str  # "full" or "calibration"
+    past_session_context: str  # few-shot context from similar past sessions
     resume: dict[str, Any] | None
 
 
@@ -123,6 +124,12 @@ class ResumeWriterAgent:
             parts.append(context)
             parts.append("")
 
+        # Past session insights (few-shot learning)
+        past_context = state.get("past_session_context", "")
+        if past_context:
+            parts.append(past_context)
+            parts.append("")
+
         parts.append(
             "Produce the complete EnhancedResume JSON with tailored summary, "
             "sections, skills, and metadata."
@@ -189,6 +196,7 @@ class ResumeWriterAgent:
         style_feedback: str = "",
         style_preference: str = "moderate",
         mode: str = "full",
+        past_session_context: str = "",
     ) -> EnhancedResume:
         """Generate a tailored resume from JD analysis and career entries.
 
@@ -200,6 +208,7 @@ class ResumeWriterAgent:
             style_feedback: Optional style calibration feedback.
             style_preference: Enhancement strength (conservative/moderate/aggressive).
             mode: "full" for standard generation, "calibration" for style-aware.
+            past_session_context: Few-shot context from similar past sessions.
 
         Returns:
             EnhancedResume with tailored sections, bullets, and summary.
@@ -212,6 +221,7 @@ class ResumeWriterAgent:
             "style_feedback": style_feedback,
             "style_preference": style_preference,
             "mode": mode,
+            "past_session_context": past_session_context,
             "resume": None,
         }
         result = await self._graph.ainvoke(initial_state)
