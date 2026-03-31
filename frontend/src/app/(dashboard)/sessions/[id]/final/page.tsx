@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileText, Mail } from "lucide-react";
-import { generateCoverLetter, getCoverLetter, getSession } from "@/lib/api/session";
+import { CheckCircle, Download, FileText, Mail } from "lucide-react";
+import { generateCoverLetter, getCoverLetter, getSession, completeSession } from "@/lib/api/session";
 import { getAccessToken } from "@/lib/api";
 import type { CoverLetterResponse, EnhancedResume, SessionResponse } from "@/types/session";
 
@@ -24,6 +24,8 @@ export default function FinalPage() {
     null
   );
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -94,6 +96,19 @@ export default function FinalPage() {
       );
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleCompleteSession = async () => {
+    setCompleting(true);
+    try {
+      await completeSession(sessionId);
+      setCompleted(true);
+      toast.success("Session completed! Your decisions are saved for future sessions.");
+    } catch {
+      toast.error("Failed to complete session");
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -214,6 +229,42 @@ export default function FinalPage() {
               Generate a personalized cover letter based on your tailored resume
               and the job description.
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Complete Session */}
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 pt-6">
+          {completed ? (
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">
+                Session completed — your preferences are saved for future sessions
+              </span>
+            </div>
+          ) : (
+            <>
+              <p className="text-center text-sm text-muted-foreground">
+                Mark this session as complete to save your decisions. Future
+                sessions for similar roles will learn from your preferences.
+              </p>
+              <Button
+                variant="outline"
+                onClick={handleCompleteSession}
+                disabled={completing}
+                className="gap-2"
+              >
+                {completing ? (
+                  "Saving..."
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Complete Session
+                  </>
+                )}
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>

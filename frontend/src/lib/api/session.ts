@@ -170,3 +170,22 @@ export async function getCoverLetter(
     `/api/v1/sessions/${sessionId}/cover-letter`
   );
 }
+
+// ---------------------------------------------------------------------------
+// Session Completion
+// ---------------------------------------------------------------------------
+
+export interface CompleteResponse {
+  session_id: string;
+  decision_id: string;
+  message: string;
+}
+
+export async function completeSession(
+  sessionId: string
+): Promise<CompleteResponse> {
+  return apiClient<CompleteResponse>(
+    `/api/v1/sessions/${sessionId}/complete`,
+    { method: "POST" }
+  );
+}
