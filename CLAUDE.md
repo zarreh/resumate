@@ -75,3 +75,4 @@ resumate/
 - [x] 7.2 — Version History
 - [x] 7.3 — Retrieval Quality Dashboard
 - [x] 8.1 — URL-Based JD Parsing
+- [x] 8.2 — Company Research Enrichment

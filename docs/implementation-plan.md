@@ -1704,9 +1704,21 @@ frontend/src/types/chat.ts
 - 25 new tests: 8 HTML extraction, 5 HTTP fetch mocking, 5 schema validation, 2 jobs endpoint, 2 sessions endpoint, 3 session start URL flow.
 - Added `beautifulsoup4` and `lxml` as dependencies.
 
-### 8.2 — Company Research Enrichment
+### 8.2 — Company Research Enrichment ✅
 - Web search tool (`tavily` or `duckduckgo-search`)
 - Feed into cover letter and Gate 1 display
+
+#### Retrospective
+- Chose `duckduckgo-search` (free, no API key) over `tavily-python` (requires API key).
+- Created `CompanyResearchService` in `services/company_research.py` — uses `DDGS` for web search (top 5 snippets), then `gpt4o-mini` with structured output to produce `CompanyResearch` schema (company_name, summary, mission, products, culture, recent_news, size_and_funding, headquarters, industry).
+- Graceful degradation: empty search results return minimal `CompanyResearch(company_name=...)`, LLM failure also returns minimal schema. Company research failures never block JD parsing.
+- Added `company_research` JSONB nullable column to `job_descriptions` table via Alembic migration.
+- Research triggers automatically in `parse_job_description` and `start_session` when `analysis.company_name` is present.
+- Cover letter agent updated: `CoverLetterState` has `company_research` field, `_build_user_message()` adds `## Company Research` section with mission/products/culture/news, `generate()` accepts optional `company_research` dict.
+- System prompt updated to list company research as a 5th input type.
+- Frontend: `CompanyResearch` interface added to `types/session.ts`, `SessionResponse` and `JobDescriptionResponse` include `company_research`. `AnalysisView` renders a new Card below the header with company info when available.
+- 11 new tests covering schema, service (mocked DDGS + LLM), error handling, and endpoint integration.
+- Fixed existing mock JDs in `test_url_jd_parsing.py` and `test_session_history.py` to include `company_research = None` attribute.
 
 ### 8.3 — Multiple LaTeX Templates
 - 3-5 templates, all accepting same `EnhancedResume` JSON
