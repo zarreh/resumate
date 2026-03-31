@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class JDAnalysis(BaseModel):
@@ -22,9 +22,16 @@ class JDAnalysis(BaseModel):
 
 
 class JobParseRequest(BaseModel):
-    """Request body for parsing a job description."""
+    """Request body for parsing a job description (text or URL)."""
 
-    text: str = Field(min_length=1, description="Raw job description text")
+    text: str | None = Field(default=None, description="Raw job description text")
+    url: str | None = Field(default=None, description="URL to fetch job description from")
+
+    @model_validator(mode="after")
+    def require_text_or_url(self) -> JobParseRequest:
+        if not self.text and not self.url:
+            raise ValueError("Either 'text' or 'url' must be provided")
+        return self
 
 
 class JobDescriptionResponse(BaseModel):

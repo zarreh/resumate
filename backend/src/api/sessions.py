@@ -6,7 +6,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.fact_checker import FactCheckerAgent
@@ -20,6 +20,7 @@ from src.models.user import User
 from src.schemas.job import JDAnalysis
 from src.schemas.matching import MatchResult, RankedEntry
 from src.schemas.resume import EnhancedResume
+from src.services.jd_scraper import ScraperError, fetch_job_description
 from src.services.job import JobService
 from src.services.llm_config import get_llm_config
 from src.services.match_scoring import MatchScorer
@@ -38,9 +39,16 @@ logger = logging.getLogger(__name__)
 
 
 class SessionStartRequest(BaseModel):
-    """Request body to start a new tailoring session."""
+    """Request body to start a new tailoring session (text or URL)."""
 
-    text: str = Field(min_length=1, description="Raw job description text")
+    text: str | None = Field(default=None, description="Raw job description text")
+    url: str | None = Field(default=None, description="URL to fetch job description from")
+
+    @model_validator(mode="after")
+    def require_text_or_url(self) -> SessionStartRequest:
+        if not self.text and not self.url:
+            raise ValueError("Either 'text' or 'url' must be provided")
+        return self
 
 
 class SessionResponse(BaseModel):
@@ -129,13 +137,24 @@ async def start_session(
     """Start a new tailoring session: parse JD, create session, return analysis."""
     svc = JobService(db)
 
+    # Resolve text: fetch from URL if provided, otherwise use text directly
+    raw_text = body.text
+    if body.url:
+        try:
+            raw_text = await fetch_job_description(body.url)
+        except ScraperError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Failed to fetch URL: {exc}",
+            ) from exc
+
     # 1. Create job description record
-    jd = await svc.create_job_description(current_user.id, body.text)
+    jd = await svc.create_job_description(current_user.id, raw_text)
 
     # 2. Analyze the JD
     try:
         agent = JobAnalystAgent(get_llm_config())
-        analysis = await agent.analyze(body.text)
+        analysis = await agent.analyze(raw_text)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

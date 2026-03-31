@@ -12,6 +12,7 @@ from src.core.database import get_db
 from src.core.dependencies import get_current_user
 from src.models.user import User
 from src.schemas.job import JDAnalysis, JobDescriptionResponse, JobParseRequest
+from src.services.jd_scraper import ScraperError, fetch_job_description
 from src.services.job import JobService
 from src.services.llm_config import get_llm_config
 
@@ -45,16 +46,27 @@ async def parse_job_description(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> JobDescriptionResponse:
-    """Parse a job description text and store the analysis."""
+    """Parse a job description text (or fetch from URL) and store the analysis."""
     svc = JobService(db)
 
+    # Resolve text: fetch from URL if provided
+    raw_text = body.text
+    if body.url:
+        try:
+            raw_text = await fetch_job_description(body.url)
+        except ScraperError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Failed to fetch URL: {exc}",
+            ) from exc
+
     # Create the JD record first
-    jd = await svc.create_job_description(current_user.id, body.text)
+    jd = await svc.create_job_description(current_user.id, raw_text)
 
     # Run the Job Analyst agent
     try:
         agent = JobAnalystAgent(get_llm_config())
-        analysis = await agent.analyze(body.text)
+        analysis = await agent.analyze(raw_text)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
