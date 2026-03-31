@@ -34,6 +34,9 @@ class Session(UUIDMixin, TimestampMixin, Base):
     context_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     style_preference: Mapped[str | None] = mapped_column(String, nullable=True)
     enhanced_resume: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # type: ignore[type-arg]
+    forked_from_id: Mapped[uuid.UUID | None] = mapped_column(
+        sa.UUID, ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True
+    )
 
     user: Mapped[User] = relationship(back_populates="sessions")
     job_description: Mapped[JobDescription] = relationship(back_populates="sessions")
