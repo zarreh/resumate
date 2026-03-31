@@ -1482,6 +1482,23 @@ backend/tests/unit/test_chat_agent.py
 - Works with or without an active session
 - Tool calls are visible in the UI
 
+### Retrospective (5.2)
+
+**What changed from the plan:**
+- No `trigger_gate_reentry` tool — deferred to a later phase. Re-entering a gate involves complex session state manipulation and should be carefully designed. The 5 tools implemented cover the primary use cases.
+- No `backend/src/schemas/chat.py` — schemas are defined in the agent's `schemas.py` file and the API file's inline request/response models, consistent with the existing pattern (sessions API keeps its schemas inline).
+- WebSocket endpoint for chat deferred — the initial implementation uses REST `POST /api/v1/chat/message` with conversation history sent by the client. This avoids the complexity of maintaining server-side chat history and WS-based streaming. Can be added when needed for real-time token streaming.
+- Tools use closure-based context injection: `_make_tools(context)` creates tool functions that capture DB, user_id, and session_id from a context dict. This avoids global state and makes testing straightforward.
+- Tools use deferred imports (`from src.services.retrieval import RetrievalService` inside the function body) to avoid circular imports and to make patching for tests use the actual module path rather than a re-export.
+- The Chat agent uses LangGraph's `add_messages` annotation for automatic message list management and `ToolNode` prebuilt for executing tool calls.
+- `MAX_ITERATIONS = 5` prevents infinite tool loops.
+
+**Gotchas discovered:**
+- Deferred imports inside `@tool`-decorated functions mean `unittest.mock.patch` must target the module where the import resolves (`src.services.retrieval.RetrievalService`, not `src.agents.chat.tools.RetrievalService`). Tests for `add_career_entry` patch `src.models.career.CareerHistoryEntry` at the model module level.
+- LangGraph's `ToolNode` automatically executes tool calls from the last `AIMessage` and returns `ToolMessage` results — no manual tool dispatch needed.
+
+**Test coverage:** 21 new tests (3 schema, 5 agent, 4 tools, 2 context, 7 endpoint), total suite: 227 tests passing.
+
 ---
 
 ### 5.3 — Chat UI (Frontend)

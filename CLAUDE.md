@@ -64,3 +64,4 @@ resumate/
 - [x] 4.3b — Gate 3: Per-Bullet Approval + Feedback Loop
 - [x] 4.4 — LaTeX PDF Generation
 - [x] 5.1 — Fact Checker Agent
+- [x] 5.2 — Chat Agent
