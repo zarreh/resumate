@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { BulletDiff } from "@/components/session/BulletDiff";
+import { BulletDiff, type DiffMode } from "@/components/session/BulletDiff";
 import { ReviewBadges } from "@/components/session/ReviewBadges";
 import type { EnhancedBullet, ReviewAnnotation } from "@/types/session";
 
@@ -9,6 +9,7 @@ interface BulletCardProps {
   bullet: EnhancedBullet;
   status?: "pending" | "approved" | "rejected";
   annotations?: ReviewAnnotation[];
+  diffMode?: DiffMode;
   onApprove?: () => void;
   onReject?: () => void;
   onEdit?: (text: string) => void;
@@ -19,6 +20,7 @@ export function BulletCard({
   bullet,
   status = "pending",
   annotations = [],
+  diffMode = "unified",
   onApprove,
   onReject,
   onEdit,
@@ -36,6 +38,7 @@ export function BulletCard({
       <BulletDiff
         original={bullet.original_text}
         enhanced={bullet.enhanced_text}
+        mode={diffMode}
       />
 
       <div className="mt-3 flex items-center justify-between">

@@ -68,3 +68,4 @@ resumate/
 - [x] 5.3 — Chat UI (Frontend)
 - [x] 6.1 — Reviewer Agent
 - [x] 6.2 — ATS Scoring
+- [x] 6.3 — Diff View Polish

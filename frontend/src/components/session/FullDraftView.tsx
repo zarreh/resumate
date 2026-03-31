@@ -3,12 +3,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionView } from "@/components/session/SectionView";
 import { SkillsEditor } from "@/components/session/SkillsEditor";
+import type { DiffMode } from "@/components/session/BulletDiff";
 import type { EnhancedResume, ReviewAnnotation } from "@/types/session";
 
 interface FullDraftViewProps {
   resume: EnhancedResume;
   bulletStatuses?: Record<string, "pending" | "approved" | "rejected">;
   annotations?: Record<string, ReviewAnnotation[]>;
+  diffMode?: DiffMode;
+  changesOnly?: boolean;
   showControls?: boolean;
   onBulletApprove?: (bulletId: string) => void;
   onBulletReject?: (bulletId: string) => void;
@@ -20,6 +23,8 @@ export function FullDraftView({
   resume,
   bulletStatuses = {},
   annotations = {},
+  diffMode = "unified",
+  changesOnly = false,
   showControls = false,
   onBulletApprove,
   onBulletReject,
@@ -57,6 +62,8 @@ export function FullDraftView({
           section={section}
           bulletStatuses={bulletStatuses}
           annotations={annotations}
+          diffMode={diffMode}
+          changesOnly={changesOnly}
           showControls={showControls}
           onBulletApprove={onBulletApprove}
           onBulletReject={onBulletReject}

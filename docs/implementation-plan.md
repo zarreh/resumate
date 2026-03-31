@@ -1585,6 +1585,15 @@ frontend/src/types/chat.ts
 - Side-by-side and unified toggle views
 - "Changes only" vs "full document" toggle
 
+### Retrospective
+- BulletDiff now supports `mode` prop: "unified" (inline, default) and "side-by-side" (grid layout)
+- Side-by-side mode splits diff into left (original with removals highlighted) and right (enhanced with additions highlighted)
+- Unchanged bullets render without diff markers for cleaner display
+- `changesOnly` filter at SectionView level hides bullets where original === enhanced
+- Toggle controls added to Review page: segmented button for Unified/Side-by-Side, checkbox for Changes Only
+- Props threaded through FullDraftView → SectionView → BulletCard → BulletDiff
+- Frontend-only change; no backend modifications needed
+
 ### 6.4 — Cover Letter Generation
 - Reuse Resume Writer model with cover letter system prompt
 - Input: JD analysis + matched entries + enhanced summary

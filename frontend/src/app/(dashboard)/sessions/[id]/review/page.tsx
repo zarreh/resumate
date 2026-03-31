@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import type { DiffMode } from "@/components/session/BulletDiff";
 import { FullDraftView } from "@/components/session/FullDraftView";
 import { GateApprovalBar } from "@/components/session/GateApprovalBar";
 import { ATSScoreCard } from "@/components/session/ATSScoreCard";
@@ -40,6 +42,8 @@ export default function ReviewPage() {
   >({});
   const [atsScore, setAtsScore] = useState<ATSScore | null>(null);
   const [scoring, setScoring] = useState(false);
+  const [diffMode, setDiffMode] = useState<DiffMode>("unified");
+  const [changesOnly, setChangesOnly] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -308,11 +312,50 @@ export default function ReviewPage() {
             </div>
           )}
 
+          {/* Diff view controls */}
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center rounded-md border border-border">
+              <button
+                onClick={() => setDiffMode("unified")}
+                className={cn(
+                  "px-3 py-1.5 transition-colors",
+                  diffMode === "unified"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                )}
+              >
+                Unified
+              </button>
+              <button
+                onClick={() => setDiffMode("side-by-side")}
+                className={cn(
+                  "px-3 py-1.5 transition-colors",
+                  diffMode === "side-by-side"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                )}
+              >
+                Side by Side
+              </button>
+            </div>
+            <label className="flex cursor-pointer items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={changesOnly}
+                onChange={(e) => setChangesOnly(e.target.checked)}
+                className="rounded"
+              />
+              Changes only
+            </label>
+          </div>
+
           {/* Full draft */}
           <FullDraftView
             resume={resume}
             bulletStatuses={bulletStatuses}
             annotations={annotations}
+            diffMode={diffMode}
+            changesOnly={changesOnly}
             showControls
             onBulletApprove={handleBulletApprove}
             onBulletReject={handleBulletReject}

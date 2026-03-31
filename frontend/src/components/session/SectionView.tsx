@@ -2,12 +2,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BulletCard } from "@/components/session/BulletCard";
+import type { DiffMode } from "@/components/session/BulletDiff";
 import type { ResumeSection, ReviewAnnotation } from "@/types/session";
 
 interface SectionViewProps {
   section: ResumeSection;
   bulletStatuses?: Record<string, "pending" | "approved" | "rejected">;
   annotations?: Record<string, ReviewAnnotation[]>;
+  diffMode?: DiffMode;
+  changesOnly?: boolean;
   showControls?: boolean;
   onBulletApprove?: (bulletId: string) => void;
   onBulletReject?: (bulletId: string) => void;
@@ -18,6 +21,8 @@ export function SectionView({
   section,
   bulletStatuses = {},
   annotations = {},
+  diffMode = "unified",
+  changesOnly = false,
   showControls = false,
   onBulletApprove,
   onBulletReject,
@@ -52,12 +57,19 @@ export function SectionView({
 
             {/* Bullets */}
             <div className="space-y-3">
-              {entry.bullets.map((bullet) => (
+              {entry.bullets
+                .filter(
+                  (bullet) =>
+                    !changesOnly ||
+                    bullet.original_text !== bullet.enhanced_text
+                )
+                .map((bullet) => (
                 <BulletCard
                   key={bullet.id}
                   bullet={bullet}
                   status={bulletStatuses[bullet.id] || "pending"}
                   annotations={annotations[bullet.id] || []}
+                  diffMode={diffMode}
                   showControls={showControls}
                   onApprove={
                     onBulletApprove
