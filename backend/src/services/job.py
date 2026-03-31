@@ -6,6 +6,7 @@ import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models.job import JobDescription
 from src.models.session import Session
@@ -118,3 +119,13 @@ class JobService:
         await self._db.commit()
         await self._db.refresh(session)
         return session
+
+    async def list_sessions(self, user_id: uuid.UUID) -> list[Session]:
+        """List all sessions for a user with JD eagerly loaded, newest first."""
+        result = await self._db.execute(
+            select(Session)
+            .options(selectinload(Session.job_description))
+            .where(Session.user_id == user_id)
+            .order_by(Session.created_at.desc())
+        )
+        return list(result.scalars().all())

@@ -59,6 +59,22 @@ class SessionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SessionListItem(BaseModel):
+    """Lightweight session summary for list view."""
+
+    id: str
+    current_gate: str
+    role_title: str | None = None
+    company_name: str | None = None
+    seniority_level: str | None = None
+    industry: str | None = None
+    style_preference: str | None = None
+    forked_from_id: str | None = None
+    has_resume: bool = False
+    created_at: str
+    updated_at: str
+
+
 class GateApprovalRequest(BaseModel):
     """Request body to approve a gate and advance the session."""
 
@@ -131,6 +147,36 @@ async def start_session(
     session = await svc.create_session(current_user.id, jd.id)
 
     return _session_to_response(session, analysis=analysis)
+
+
+@router.get("/", response_model=list[SessionListItem])
+async def list_sessions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[SessionListItem]:
+    """List all sessions for the current user with JD metadata."""
+    svc = JobService(db)
+    sessions = await svc.list_sessions(current_user.id)
+
+    items = []
+    for s in sessions:
+        analysis = s.job_description.analysis if s.job_description else None
+        items.append(
+            SessionListItem(
+                id=str(s.id),
+                current_gate=s.current_gate,
+                role_title=analysis.get("role_title") if analysis else None,
+                company_name=analysis.get("company_name") if analysis else None,
+                seniority_level=analysis.get("seniority_level") if analysis else None,
+                industry=analysis.get("industry") if analysis else None,
+                style_preference=s.style_preference,
+                forked_from_id=str(s.forked_from_id) if s.forked_from_id else None,
+                has_resume=s.enhanced_resume is not None,
+                created_at=s.created_at.isoformat(),
+                updated_at=s.updated_at.isoformat(),
+            )
+        )
+    return items
 
 
 @router.get("/{session_id}", response_model=SessionResponse)
