@@ -26,6 +26,7 @@ def _make_mock_jd(*, role_title: str = "Backend Engineer", company: str = "TechC
         "industry": "Technology",
     }
     jd.embedding = [0.1] * 10
+    jd.company_research = None
     return jd
 
 

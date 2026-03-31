@@ -86,6 +86,7 @@ class TestParseJobDescriptionWithUrl:
             patch("src.api.jobs.fetch_job_description", new_callable=AsyncMock) as mock_fetch,
             patch("src.api.jobs.JobService") as MockJobService,
             patch("src.api.jobs.JobAnalystAgent") as MockAgent,
+            patch("src.api.jobs.CompanyResearchService") as MockResearch,
             patch("src.api.jobs.get_llm_config"),
         ):
             mock_fetch.return_value = "Scraped JD text from URL"
@@ -94,12 +95,14 @@ class TestParseJobDescriptionWithUrl:
             mock_jd.id = "jd-id-1"
             mock_jd.raw_text = "Scraped JD text from URL"
             mock_jd.analysis = mock_analysis.model_dump.return_value
+            mock_jd.company_research = None
             mock_jd.created_at = MagicMock()
             mock_jd.created_at.isoformat.return_value = "2025-06-01T00:00:00+00:00"
 
             mock_svc = AsyncMock()
             mock_svc.create_job_description.return_value = mock_jd
             mock_svc.update_analysis.return_value = mock_jd
+            mock_svc.update_company_research.return_value = mock_jd
             MockJobService.return_value = mock_svc
 
             mock_agent_inst = AsyncMock()
@@ -177,6 +180,7 @@ class TestStartSessionWithUrl:
             mock_jd = MagicMock()
             mock_jd.id = "jd-1"
             mock_jd.analysis = mock_analysis.model_dump()
+            mock_jd.company_research = None
 
             mock_session = MagicMock()
             mock_session.id = "sess-1"
