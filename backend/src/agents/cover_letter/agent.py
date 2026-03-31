@@ -23,6 +23,7 @@ class CoverLetterState(TypedDict):
 
     enhanced_resume: dict[str, Any]
     jd_analysis: dict[str, Any]
+    company_research: dict[str, Any] | None
     cover_letter: str | None
 
 
@@ -63,6 +64,24 @@ class CoverLetterAgent:
         if jd.get("qualifications"):
             parts.append(f"**Qualifications:** {', '.join(jd['qualifications'])}")
         parts.append("")
+
+        # Company research context (if available)
+        cr = state.get("company_research")
+        if cr:
+            parts.append("## Company Research")
+            if cr.get("summary"):
+                parts.append(f"**Overview:** {cr['summary']}")
+            if cr.get("mission"):
+                parts.append(f"**Mission:** {cr['mission']}")
+            if cr.get("products"):
+                parts.append(f"**Products/Services:** {', '.join(cr['products'])}")
+            if cr.get("culture"):
+                parts.append(f"**Culture:** {cr['culture']}")
+            if cr.get("recent_news"):
+                parts.append("**Recent News:**")
+                for news in cr["recent_news"][:3]:
+                    parts.append(f"  - {news}")
+            parts.append("")
 
         # Resume context
         parts.append("## Candidate Profile")
@@ -131,12 +150,14 @@ class CoverLetterAgent:
         self,
         enhanced_resume: EnhancedResume,
         jd_analysis: JDAnalysis,
+        company_research: dict[str, Any] | None = None,
     ) -> str:
         """Generate a cover letter for the given resume and JD.
 
         Args:
             enhanced_resume: The tailored resume.
             jd_analysis: The job description analysis.
+            company_research: Optional structured company research data.
 
         Returns:
             The cover letter text.
@@ -144,6 +165,7 @@ class CoverLetterAgent:
         initial_state: CoverLetterState = {
             "enhanced_resume": enhanced_resume.model_dump(),
             "jd_analysis": jd_analysis.model_dump(),
+            "company_research": company_research,
             "cover_letter": None,
         }
         result = await self._graph.ainvoke(initial_state)

@@ -9,6 +9,7 @@ personalized cover letter for a job application.
 2. **Enhanced resume summary** — the candidate's professional summary
 3. **Key skills and qualifications** — from the tailored resume
 4. **Top bullets** — the strongest achievements from the resume
+5. **Company research** — company mission, culture, products, recent news (if available)
 
 ## Cover letter guidelines:
 - **Length**: 3-4 paragraphs, 250-400 words total

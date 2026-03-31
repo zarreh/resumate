@@ -969,7 +969,7 @@ async def generate_cover_letter(
     try:
         llm_config = get_llm_config()
         agent = CoverLetterAgent(llm_config)
-        content = await agent.generate(current_resume, jd_analysis)
+        content = await agent.generate(current_resume, jd_analysis, company_research=jd.company_research)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
