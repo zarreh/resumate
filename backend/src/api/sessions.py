@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.fact_checker import FactCheckerAgent
 from src.agents.job_analyst import JobAnalystAgent
 from src.agents.resume_writer import ResumeWriterAgent
 from src.core.database import get_db
@@ -541,3 +542,77 @@ def _merge_revisions(
                     updated_ids.append(bullet.id)
 
     return updated_ids
+
+
+# ---------------------------------------------------------------------------
+# Fact checking
+# ---------------------------------------------------------------------------
+
+
+class FactCheckResponse(BaseModel):
+    """Response containing the fact-check report."""
+
+    report: dict = Field(description="Complete FactCheckReport JSON")  # type: ignore[type-arg]
+
+
+@router.post("/{session_id}/fact-check", response_model=FactCheckResponse)
+async def fact_check_resume(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> FactCheckResponse:
+    """Run the Fact Checker agent on the session's enhanced resume."""
+    svc = JobService(db)
+    resume_svc = ResumeSessionService(db)
+
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    current_resume = await resume_svc.get_enhanced_resume(session)
+    if current_resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No enhanced resume exists on this session",
+        )
+
+    # Load career entries for the user
+    from sqlalchemy import select
+
+    from src.models.career import CareerHistoryEntry
+
+    result = await db.execute(
+        select(CareerHistoryEntry).where(
+            CareerHistoryEntry.user_id == current_user.id
+        )
+    )
+    entries = result.scalars().all()
+
+    career_dicts = [
+        {
+            "id": str(e.id),
+            "entry_type": e.entry_type,
+            "title": e.title,
+            "organization": e.organization,
+            "start_date": e.start_date.isoformat() if e.start_date else None,
+            "end_date": e.end_date.isoformat() if e.end_date else None,
+            "bullet_points": e.bullet_points or [],
+            "tags": e.tags or [],
+            "source": e.source,
+        }
+        for e in entries
+    ]
+
+    try:
+        llm_config = get_llm_config()
+        agent = FactCheckerAgent(llm_config)
+        report = await agent.check(current_resume, career_dicts)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to fact-check resume: {exc}",
+        ) from exc
+
+    return FactCheckResponse(report=report.model_dump())

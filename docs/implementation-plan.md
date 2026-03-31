@@ -1430,6 +1430,20 @@ class ClaimVerification(BaseModel):
 - Verified claims include source reference
 - Flags display as annotations at Gate 3
 
+### Retrospective (5.1)
+
+**What changed from the plan:**
+- No `tools.py` file created — the Fact Checker uses a single-node LangGraph graph with structured output (same pattern as Job Analyst and Resume Writer). All career entries are passed in the user message rather than via tool calls. This is simpler and more testable.
+- Added `POST /api/v1/sessions/{session_id}/fact-check` endpoint to `sessions.py` (not a separate API file). The endpoint loads all career entries for the user and passes them to the agent along with the enhanced resume.
+- `FactCheckReport` includes `summary`, `verified_count`, `unverified_count`, `modified_count` fields beyond just the verifications list.
+- `ClaimVerification.source_entry_id` is `str | None` (not `UUID | None`) for consistency with other schemas that use string IDs.
+- Gate 3 annotation display deferred to Phase 6.1 (Reviewer Agent) — this phase only adds the backend agent and endpoint.
+
+**Gotchas discovered:**
+- No new gotchas — the pattern from Job Analyst and Resume Writer transferred directly.
+
+**Test coverage:** 18 new tests (5 schema, 3 agent, 3 node, 3 message builder, 4 endpoint), total suite: 206 tests passing.
+
 ---
 
 ### 5.2 — Chat Agent
