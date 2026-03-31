@@ -8,6 +8,7 @@ import {
   Briefcase,
   LayoutDashboard,
   MessageSquare,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { href: "/dashboard/career", label: "Career History", icon: Briefcase },
   { href: "/dashboard/sessions", label: "Sessions", icon: FileText },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
+  { href: "/dashboard/quality", label: "Quality", icon: BarChart3 },
 ];
 
 export default function Sidebar() {
