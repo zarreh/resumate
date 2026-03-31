@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -27,6 +28,8 @@ from src.services.retrieval import RetrievalService
 from src.services.session_learning import SessionLearningService
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +332,24 @@ async def generate_resume(
     if req.style_preference:
         await resume_svc.update_style_preference(session, req.style_preference)
 
+    # Retrieve similar past session context for few-shot learning
+    past_session_context = ""
+    if jd_embedding:
+        learning_svc = SessionLearningService(db, llm_config)
+        try:
+            similar = await learning_svc.find_similar_sessions(
+                current_user.id,
+                jd_embedding,
+                exclude_session_id=session.id,
+            )
+            past_session_context = learning_svc.format_past_sessions_context(similar)
+        except Exception:
+            # Non-critical — proceed without past session context
+            logger.warning(
+                "Failed to retrieve past sessions for session %s", session_id,
+                exc_info=True,
+            )
+
     try:
         agent = ResumeWriterAgent(llm_config)
         resume = await agent.write(
@@ -339,6 +360,7 @@ async def generate_resume(
             style_feedback=req.style_feedback,
             style_preference=req.style_preference,
             mode=req.mode,
+            past_session_context=past_session_context,
         )
     except Exception as exc:
         raise HTTPException(
@@ -478,6 +500,24 @@ async def submit_feedback(
     scorer = MatchScorer()
     match_result = scorer.score(jd_analysis, ranked)
 
+    # Retrieve past session context for revision too
+    revision_past_context = ""
+    if jd_embedding:
+        learning_svc = SessionLearningService(db, llm_config)
+        try:
+            similar = await learning_svc.find_similar_sessions(
+                current_user.id,
+                jd_embedding,
+                exclude_session_id=session.id,
+            )
+            revision_past_context = learning_svc.format_past_sessions_context(similar)
+        except Exception:
+            logger.warning(
+                "Failed to retrieve past sessions for revision on session %s",
+                session_id,
+                exc_info=True,
+            )
+
     try:
         agent = ResumeWriterAgent(llm_config)
         revised_resume = await agent.write(
@@ -488,6 +528,7 @@ async def submit_feedback(
             style_feedback=revision_feedback,
             style_preference=session.style_preference or "moderate",
             mode="calibration",
+            past_session_context=revision_past_context,
         )
     except Exception as exc:
         raise HTTPException(
