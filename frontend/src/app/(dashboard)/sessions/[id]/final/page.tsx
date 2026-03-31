@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Download, FileText, Mail } from "lucide-react";
-import { generateCoverLetter, getCoverLetter, getSession, completeSession } from "@/lib/api/session";
+import { CheckCircle, Download, FileText, GitFork, Mail } from "lucide-react";
+import { generateCoverLetter, getCoverLetter, getSession, completeSession, forkSession } from "@/lib/api/session";
 import { getAccessToken } from "@/lib/api";
 import type { CoverLetterResponse, EnhancedResume, SessionResponse } from "@/types/session";
 
@@ -14,6 +14,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function FinalPage() {
   const params = useParams();
+  const router = useRouter();
   const sessionId = params.id as string;
 
   const [session, setSession] = useState<SessionResponse | null>(null);
@@ -26,6 +27,7 @@ export default function FinalPage() {
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [forking, setForking] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -109,6 +111,19 @@ export default function FinalPage() {
       toast.error("Failed to complete session");
     } finally {
       setCompleting(false);
+    }
+  };
+
+  const handleFork = async () => {
+    setForking(true);
+    try {
+      const newSession = await forkSession(sessionId);
+      toast.success("Session forked — starting fresh tailoring");
+      router.push(`/dashboard/sessions/${newSession.id}/analysis`);
+    } catch {
+      toast.error("Failed to fork session");
+    } finally {
+      setForking(false);
     }
   };
 
@@ -266,6 +281,31 @@ export default function FinalPage() {
               </Button>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Fork Session */}
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 pt-6">
+          <p className="text-center text-sm text-muted-foreground">
+            Want to refine this resume? Fork it as a new session to start
+            from the same job description and selections.
+          </p>
+          <Button
+            variant="outline"
+            onClick={handleFork}
+            disabled={forking}
+            className="gap-2"
+          >
+            {forking ? (
+              "Forking..."
+            ) : (
+              <>
+                <GitFork className="h-4 w-4" />
+                Fork as New Session
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
