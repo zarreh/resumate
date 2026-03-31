@@ -1671,8 +1671,17 @@ frontend/src/types/chat.ts
 - **Route ordering**: `GET /` was placed before `GET /{session_id}` to avoid FastAPI treating the empty path as a session ID.
 - **Frontend**: Sessions list page fully replaced the static placeholder with cards showing metadata, gate badges, and View/Fork actions. Fork button also added to the Final page.
 
-### 7.3 — Retrieval Quality Dashboard
+### 7.3 — Retrieval Quality Dashboard ✅
 - Aggregate metrics from `feedback_log`: override rate, usage rate, rejection rate
+
+#### Retrospective
+- Created `AnalyticsService` in `backend/src/services/analytics.py` — queries `feedback_logs` joined with `sessions` and `job_descriptions` to compute per-user aggregate metrics.
+- Two-query approach: first aggregates counts by `(session_id, decision)`, then loads session metadata with `selectinload(Session.job_description)` for role/company extraction.
+- Schemas (`FeedbackMetrics`, `SessionFeedbackSummary`) defined inline in `backend/src/api/analytics.py` following the sessions.py pattern.
+- API endpoint: `GET /api/v1/analytics/feedback` — registered in `main.py` under `/api/v1/analytics` prefix.
+- Frontend: dedicated `/quality` page with 4 summary cards (total, approval rate, rejection rate, edit rate) and per-session breakdown cards with color-coded badges.
+- Added "Quality" link to sidebar with `BarChart3` icon from lucide-react.
+- 9 tests: 4 schema, 3 service (empty, single session, multi-session), 2 endpoint (data, empty). All passing.
 
 ---
 
