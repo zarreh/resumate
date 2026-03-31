@@ -27,3 +27,4 @@ agent_models:
   ats_scoring: gpt4o-mini
   resume_parser: gpt4o
   cover_letter: gpt4o
+  company_research: gpt4o-mini
