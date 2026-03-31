@@ -1380,6 +1380,19 @@ async def generate_pdf(resume: EnhancedResume, template_name: str) -> bytes:
 - Gate 4 UI shows PDF preview and download button
 - Edge cases: long names, many bullets, empty sections, Unicode characters
 
+### Retrospective (4.4)
+
+**What changed from the plan:**
+- LaTeX sanitizer uses a single-pass `re.sub()` instead of sequential `str.replace()` calls. The plan's sequential approach causes double-escaping: replacing `\` → `\textbackslash{}` first, then `{` → `\{` and `}` → `\}` catches the braces inside `\textbackslash{}`. The regex-based approach processes each special character exactly once via a lambda replacement function.
+- `PDFPreview.tsx` and `FinalApproval.tsx` components deferred — the Gate 4 page uses a simpler stats-and-download layout. PDF preview requires an embedded viewer (pdf.js or iframe), which adds complexity without much benefit at this stage.
+- `generate_pdf()` is synchronous (not async) since `subprocess.run` is blocking. This is fine for now — tectonic compilation is fast (~2s). Can be moved to a thread pool if needed.
+- Frontend final page uses `sessions/` (plural) route path consistent with all other gate pages, not `session/` (singular) from the plan.
+- Tectonic is only available inside Docker; tests mock `subprocess.run` and PDF file reading.
+
+**Gotchas:**
+- Jinja2's `comment_start_string=r'\#{'` conflicts with the LaTeX custom delimiter ideas — used `\COMMENT{` instead to avoid ambiguity.
+- The `latex_escape` Jinja2 filter reuses `sanitize_for_latex()` so there's a single source of truth for escaping logic.
+
 ---
 
 ## Phase 5: Fact Checking & Chat

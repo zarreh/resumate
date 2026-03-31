@@ -1,0 +1,85 @@
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+% No page numbers
+\pagestyle{empty}
+
+% Section formatting
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+
+% Tighter lists
+\setlist[itemize]{nosep, leftmargin=1.5em, topsep=2pt}
+
+% Custom commands
+\newcommand{\entryheader}[4]{%
+  \noindent\textbf{#1}\hfill #3\\
+  \noindent\textit{#2}\hfill \textit{#4}\\[2pt]
+}
+
+\begin{document}
+
+%% ============================================================
+%% HEADER
+%% ============================================================
+
+\begin{center}
+  {\LARGE\bfseries Resume}\\[6pt]
+\end{center}
+
+%% ============================================================
+%% SUMMARY
+%% ============================================================
+
+\BLOCK{if resume.summary}
+\section{Professional Summary}
+\VAR{resume.summary | latex_escape}
+\BLOCK{endif}
+
+%% ============================================================
+%% SECTIONS
+%% ============================================================
+
+\BLOCK{for section in resume.sections}
+\section{\VAR{section.title | latex_escape}}
+
+\BLOCK{for entry in section.entries}
+\entryheader%
+  {\VAR{entry.title | latex_escape}}%
+  {\VAR{(entry.organization or '') | latex_escape}}%
+  {\VAR{(entry.start_date or '') | latex_escape}\BLOCK{if entry.end_date} -- \VAR{entry.end_date | latex_escape}\BLOCK{elif entry.start_date} -- Present\BLOCK{endif}}%
+  {}
+
+\BLOCK{if entry.bullets}
+\begin{itemize}
+\BLOCK{for bullet in entry.bullets}
+  \item \VAR{bullet.enhanced_text | latex_escape}
+\BLOCK{endfor}
+\end{itemize}
+\BLOCK{endif}
+
+\BLOCK{if not loop.last}
+\vspace{4pt}
+\BLOCK{endif}
+\BLOCK{endfor}
+
+\BLOCK{endfor}
+
+%% ============================================================
+%% SKILLS
+%% ============================================================
+
+\BLOCK{if resume.skills}
+\section{Skills}
+\VAR{resume.skills | join(', ') | latex_escape}
+\BLOCK{endif}
+
+\end{document}

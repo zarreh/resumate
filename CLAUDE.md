@@ -62,3 +62,4 @@ resumate/
 - [x] 4.2 — Calibration Round (Gate 2)
 - [x] 4.3a — Gate 3 UI: Full Draft Display + Diff
 - [x] 4.3b — Gate 3: Per-Bullet Approval + Feedback Loop
+- [x] 4.4 — LaTeX PDF Generation
