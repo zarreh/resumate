@@ -17,11 +17,11 @@ import type {
 // ---------------------------------------------------------------------------
 
 export async function parseJobDescription(
-  text: string
+  params: { text?: string; url?: string }
 ): Promise<JobDescriptionResponse> {
   return apiClient<JobDescriptionResponse>("/api/v1/jobs/parse", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(params),
   });
 }
 
@@ -39,10 +39,12 @@ export async function getJobDescription(
 // Sessions
 // ---------------------------------------------------------------------------
 
-export async function startSession(text: string): Promise<SessionResponse> {
+export async function startSession(
+  params: { text?: string; url?: string }
+): Promise<SessionResponse> {
   return apiClient<SessionResponse>("/api/v1/sessions/start", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(params),
   });
 }
 
