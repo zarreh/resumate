@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.fact_checker import FactCheckerAgent
 from src.agents.job_analyst import JobAnalystAgent
 from src.agents.resume_writer import ResumeWriterAgent
+from src.agents.reviewer import ReviewerAgent
 from src.core.database import get_db
 from src.core.dependencies import get_current_user
 from src.models.feedback import FeedbackLog
@@ -616,3 +617,60 @@ async def fact_check_resume(
         ) from exc
 
     return FactCheckResponse(report=report.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# Resume review
+# ---------------------------------------------------------------------------
+
+
+class ReviewResponse(BaseModel):
+    """Response containing the two-pass review report."""
+
+    report: dict = Field(description="Complete ReviewReport JSON")  # type: ignore[type-arg]
+
+
+@router.post("/{session_id}/review", response_model=ReviewResponse)
+async def review_resume(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ReviewResponse:
+    """Run the Reviewer agent on the session's enhanced resume."""
+    svc = JobService(db)
+    resume_svc = ResumeSessionService(db)
+
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    current_resume = await resume_svc.get_enhanced_resume(session)
+    if current_resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No enhanced resume exists on this session",
+        )
+
+    # Load the JD analysis
+    jd = await svc.get_job_description(current_user.id, session.job_description_id)
+    if jd is None or jd.analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description has no analysis",
+        )
+
+    jd_analysis = JDAnalysis.model_validate(jd.analysis)
+
+    try:
+        llm_config = get_llm_config()
+        agent = ReviewerAgent(llm_config)
+        report = await agent.review(current_resume, jd_analysis)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to review resume: {exc}",
+        ) from exc
+
+    return ReviewResponse(report=report.model_dump())

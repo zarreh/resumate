@@ -1553,6 +1553,17 @@ frontend/src/types/chat.ts
 - Output: `ReviewAnnotation` objects tied to bullet IDs
 - Display as colored badges at Gate 3
 
+### Retrospective
+- Implemented as a single-node LangGraph agent (same pattern as Fact Checker and Job Analyst)
+- Combined both perspectives into a single LLM call with `COMBINED_PROMPT` rather than two separate passes — more efficient and consistent
+- ReviewAnnotation schema: `bullet_id`, `perspective` (recruiter/hiring_manager), `rating` (strong/adequate/weak), `comment`
+- ReviewReport includes per-perspective summaries and rating counts
+- Frontend: `ReviewBadges` component renders colored badges (green/yellow/red) with tooltip comments
+- Threaded annotations through `FullDraftView → SectionView → BulletCard` via `Record<string, ReviewAnnotation[]>` keyed by bullet_id
+- Added "Run AI Review" button on the Review page with summary display
+- API endpoint: `POST /sessions/{id}/review`
+- 15 tests: 5 schema, 3 agent, 3 message builder, 4 endpoint (242 total pass)
+
 ### 6.2 — ATS Scoring
 - Primarily deterministic keyword matching
 - Light LLM call for suggestions

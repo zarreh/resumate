@@ -146,3 +146,27 @@ export interface EnhancedResume {
 export interface GenerateResponse {
   resume: EnhancedResume;
 }
+
+// ---------------------------------------------------------------------------
+// Review Annotations
+// ---------------------------------------------------------------------------
+
+export interface ReviewAnnotation {
+  bullet_id: string;
+  perspective: "recruiter" | "hiring_manager";
+  rating: "strong" | "adequate" | "weak";
+  comment: string;
+}
+
+export interface ReviewReport {
+  annotations: ReviewAnnotation[];
+  recruiter_summary: string;
+  hiring_manager_summary: string;
+  strong_count: number;
+  adequate_count: number;
+  weak_count: number;
+}
+
+export interface ReviewResponse {
+  report: ReviewReport;
+}

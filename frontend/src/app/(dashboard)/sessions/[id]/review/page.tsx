@@ -9,10 +9,11 @@ import { GateApprovalBar } from "@/components/session/GateApprovalBar";
 import {
   approveGate,
   getSession,
+  reviewResume,
   submitFeedback,
   type BulletDecision,
 } from "@/lib/api/session";
-import type { EnhancedResume, SessionResponse } from "@/types/session";
+import type { EnhancedResume, ReviewAnnotation, ReviewReport, SessionResponse } from "@/types/session";
 
 export default function ReviewPage() {
   const params = useParams();
@@ -30,6 +31,11 @@ export default function ReviewPage() {
   const [feedbackTexts, setFeedbackTexts] = useState<Record<string, string>>(
     {}
   );
+  const [reviewReport, setReviewReport] = useState<ReviewReport | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [annotations, setAnnotations] = useState<
+    Record<string, ReviewAnnotation[]>
+  >({});
 
   const fetchSession = useCallback(async () => {
     try {
@@ -57,6 +63,28 @@ export default function ReviewPage() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
+
+  const handleRunReview = async () => {
+    setReviewing(true);
+    try {
+      const result = await reviewResume(sessionId);
+      setReviewReport(result.report);
+      // Group annotations by bullet_id
+      const grouped: Record<string, ReviewAnnotation[]> = {};
+      for (const ann of result.report.annotations) {
+        if (!grouped[ann.bullet_id]) grouped[ann.bullet_id] = [];
+        grouped[ann.bullet_id].push(ann);
+      }
+      setAnnotations(grouped);
+      toast.success(
+        `Review complete: ${result.report.strong_count} strong, ${result.report.adequate_count} adequate, ${result.report.weak_count} weak`
+      );
+    } catch {
+      toast.error("Failed to run review");
+    } finally {
+      setReviewing(false);
+    }
+  };
 
   const handleBulletApprove = (bulletId: string) => {
     setBulletStatuses((prev) => ({
@@ -211,12 +239,50 @@ export default function ReviewPage() {
                   : `Submit Feedback (${rejectedCount} rejected)`}
               </Button>
             )}
+
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleRunReview}
+              disabled={reviewing}
+              className={rejectedCount > 0 ? "" : "ml-auto"}
+            >
+              {reviewing ? "Reviewing..." : "Run AI Review"}
+            </Button>
           </div>
+
+          {/* Review summary */}
+          {reviewReport && (
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4">
+              <h3 className="text-sm font-semibold">AI Review Summary</h3>
+              <div className="flex gap-4 text-xs">
+                <span className="text-green-600">
+                  <strong>{reviewReport.strong_count}</strong> strong
+                </span>
+                <span className="text-yellow-600">
+                  <strong>{reviewReport.adequate_count}</strong> adequate
+                </span>
+                <span className="text-red-600">
+                  <strong>{reviewReport.weak_count}</strong> weak
+                </span>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>
+                  <strong>Recruiter:</strong> {reviewReport.recruiter_summary}
+                </p>
+                <p>
+                  <strong>Hiring Manager:</strong>{" "}
+                  {reviewReport.hiring_manager_summary}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Full draft */}
           <FullDraftView
             resume={resume}
             bulletStatuses={bulletStatuses}
+            annotations={annotations}
             showControls
             onBulletApprove={handleBulletApprove}
             onBulletReject={handleBulletReject}

@@ -2,11 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BulletCard } from "@/components/session/BulletCard";
-import type { ResumeSection } from "@/types/session";
+import type { ResumeSection, ReviewAnnotation } from "@/types/session";
 
 interface SectionViewProps {
   section: ResumeSection;
   bulletStatuses?: Record<string, "pending" | "approved" | "rejected">;
+  annotations?: Record<string, ReviewAnnotation[]>;
   showControls?: boolean;
   onBulletApprove?: (bulletId: string) => void;
   onBulletReject?: (bulletId: string) => void;
@@ -16,6 +17,7 @@ interface SectionViewProps {
 export function SectionView({
   section,
   bulletStatuses = {},
+  annotations = {},
   showControls = false,
   onBulletApprove,
   onBulletReject,
@@ -55,6 +57,7 @@ export function SectionView({
                   key={bullet.id}
                   bullet={bullet}
                   status={bulletStatuses[bullet.id] || "pending"}
+                  annotations={annotations[bullet.id] || []}
                   showControls={showControls}
                   onApprove={
                     onBulletApprove

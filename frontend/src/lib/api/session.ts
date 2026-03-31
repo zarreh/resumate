@@ -5,6 +5,7 @@ import type {
   GenerateResponse,
   JobDescriptionResponse,
   MatchResponse,
+  ReviewResponse,
   SessionResponse,
 } from "@/types/session";
 
@@ -116,5 +117,18 @@ export async function submitFeedback(
       method: "POST",
       body: JSON.stringify({ decisions }),
     }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Resume review
+// ---------------------------------------------------------------------------
+
+export async function reviewResume(
+  sessionId: string
+): Promise<ReviewResponse> {
+  return apiClient<ReviewResponse>(
+    `/api/v1/sessions/${sessionId}/review`,
+    { method: "POST" }
   );
 }

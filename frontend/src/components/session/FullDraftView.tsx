@@ -3,11 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionView } from "@/components/session/SectionView";
 import { SkillsEditor } from "@/components/session/SkillsEditor";
-import type { EnhancedResume } from "@/types/session";
+import type { EnhancedResume, ReviewAnnotation } from "@/types/session";
 
 interface FullDraftViewProps {
   resume: EnhancedResume;
   bulletStatuses?: Record<string, "pending" | "approved" | "rejected">;
+  annotations?: Record<string, ReviewAnnotation[]>;
   showControls?: boolean;
   onBulletApprove?: (bulletId: string) => void;
   onBulletReject?: (bulletId: string) => void;
@@ -18,6 +19,7 @@ interface FullDraftViewProps {
 export function FullDraftView({
   resume,
   bulletStatuses = {},
+  annotations = {},
   showControls = false,
   onBulletApprove,
   onBulletReject,
@@ -54,6 +56,7 @@ export function FullDraftView({
           key={section.id}
           section={section}
           bulletStatuses={bulletStatuses}
+          annotations={annotations}
           showControls={showControls}
           onBulletApprove={onBulletApprove}
           onBulletReject={onBulletReject}

@@ -2,11 +2,13 @@
 
 import { cn } from "@/lib/utils";
 import { BulletDiff } from "@/components/session/BulletDiff";
-import type { EnhancedBullet } from "@/types/session";
+import { ReviewBadges } from "@/components/session/ReviewBadges";
+import type { EnhancedBullet, ReviewAnnotation } from "@/types/session";
 
 interface BulletCardProps {
   bullet: EnhancedBullet;
   status?: "pending" | "approved" | "rejected";
+  annotations?: ReviewAnnotation[];
   onApprove?: () => void;
   onReject?: () => void;
   onEdit?: (text: string) => void;
@@ -16,6 +18,7 @@ interface BulletCardProps {
 export function BulletCard({
   bullet,
   status = "pending",
+  annotations = [],
   onApprove,
   onReject,
   onEdit,
@@ -84,6 +87,8 @@ export function BulletCard({
           </div>
         )}
       </div>
+
+      <ReviewBadges annotations={annotations} />
     </div>
   );
 }
