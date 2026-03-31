@@ -1637,6 +1637,28 @@ frontend/src/types/chat.ts
 - Retrieve similar past sessions by JD embedding cosine similarity
 - Inject as few-shot context into Resume Writer prompt
 
+### Retrospective (7.1)
+
+**What changed from the plan:**
+- Created a dedicated `SessionLearningService` in `backend/src/services/session_learning.py` that handles both decision storage and retrieval — cleaner than spreading this across multiple services.
+- `complete_session()` builds a rich `decisions_snapshot` JSONB containing: JD analysis, role title, industry, selected entry IDs, style preference, section order, summary, skills, up to 20 bullet rewrites, and feedback decisions.
+- The JD embedding is copied directly from `job_descriptions.embedding` to `session_decisions.embedding` — no separate embedding generation needed for the snapshot.
+- `find_similar_sessions()` uses raw SQL with pgvector's `<=>` cosine distance operator, same pattern as `RetrievalService.find_relevant_entries()`.
+- `format_past_sessions_context()` produces a markdown-formatted `## Past Session Insights` block that gets injected into the Resume Writer's user message.
+- Past session context is injected in the user message (not system prompt) via `_build_user_message()` — keeps the system prompt stable and treats past sessions as additional context rather than instructions.
+- `WriterState` TypedDict extended with `past_session_context: str` field; `write()` method accepts `past_session_context` parameter (default empty string).
+- Both the `generate` endpoint and the `feedback` revision path query for similar past sessions. Failures are caught and logged as warnings (non-critical path).
+- Added `POST /api/v1/sessions/{id}/complete` endpoint that validates session is at `final` gate with an enhanced resume, then records decisions.
+- Frontend: "Complete Session" button on the Final page calls the endpoint. Shows confirmation state after success.
+- No Alembic migration needed — `session_decisions` table with `embedding` Vector(1536) column was created in the initial migration.
+
+**Gotchas discovered:**
+- The `SessionDecision` model and table already existed from Phase 1.3 but were never populated. All columns needed were already in place.
+- `decisions_snapshot` field is capped at 20 bullet rewrites to keep the JSONB manageable for retrieval and prompt injection.
+- Context formatting shows only 3 example rewrites per past session to avoid bloating the prompt.
+
+**Test coverage:** 15 new tests (4 context formatting, 3 complete_session service, 3 find_similar_sessions, 2 writer agent integration, 3 endpoint validation). 12 pass without DB, 3 endpoint tests require PostgreSQL.
+
 ### 7.2 — Version History
 - List past resumes with metadata (date, company, role, scores)
 - View any past version, fork as new session starting point
