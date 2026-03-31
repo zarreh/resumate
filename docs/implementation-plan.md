@@ -1659,9 +1659,17 @@ frontend/src/types/chat.ts
 
 **Test coverage:** 15 new tests (4 context formatting, 3 complete_session service, 3 find_similar_sessions, 2 writer agent integration, 3 endpoint validation). 12 pass without DB, 3 endpoint tests require PostgreSQL.
 
-### 7.2 — Version History
+### 7.2 — Version History ✅
 - List past resumes with metadata (date, company, role, scores)
 - View any past version, fork as new session starting point
+
+#### Retrospective
+- **Scores deferred**: ATS and reviewer scores are computed on-the-fly and not persisted. Rather than adding database columns, the list view shows role, company, gate status, industry, and date — all available from Session + JD join. Scores remain on-demand in the detail view.
+- **`forked_from_id`**: Added as a nullable self-referential FK on sessions with `ondelete="SET NULL"`. Manual Alembic migration since no DB was available at dev time.
+- **View past version**: Already works via existing `sessions/[id]/page.tsx` gate redirect — no new page needed.
+- **Fork copies JD ref + selections**, resets gate to `analysis`. Enhanced resume is NOT copied (must be regenerated).
+- **Route ordering**: `GET /` was placed before `GET /{session_id}` to avoid FastAPI treating the empty path as a session ID.
+- **Frontend**: Sessions list page fully replaced the static placeholder with cards showing metadata, gate badges, and View/Fork actions. Fork button also added to the Final page.
 
 ### 7.3 — Retrieval Quality Dashboard
 - Aggregate metrics from `feedback_log`: override rate, usage rate, rejection rate

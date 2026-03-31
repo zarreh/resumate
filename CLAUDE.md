@@ -72,3 +72,4 @@ resumate/
 - [x] 6.4 — Cover Letter Generation
 - [x] 6.5 — Strength-of-Change Control
 - [x] 7.1 — Past Session Learning
+- [x] 7.2 — Version History
