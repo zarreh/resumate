@@ -1088,6 +1088,22 @@ frontend/src/types/session.ts
 - User can add context text
 - "Approve" advances to Gate 2 (calibration)
 
+### Retrospective (3.3)
+
+**What changed from the plan:**
+- Routes are under `(dashboard)/sessions/` (plural, matching sidebar nav) instead of `(dashboard)/session/` (singular) from the plan. This keeps URL paths consistent with the sidebar navigation.
+- Added `sessions/page.tsx` as a sessions list page (not in original plan) — needed so the "Sessions" sidebar link has a landing page with a "New Session" button.
+- WebSocket progress events not wired yet — the `startSession` call is a simple REST POST. WebSocket streaming will be added when the full pipeline is in place (Phase 4+).
+- All 6 planned components created: `JDInput`, `AnalysisView`, `MatchOverview`, `EntryToggle`, `ContextInput`, `GateApprovalBar`.
+- Analysis page uses a two-column layout: left column for JD analysis, right column for match scores + entry selection + context input.
+- Entries are auto-selected (all included) on initial load; user can deselect to exclude.
+- Match endpoint failure is handled gracefully (e.g., if user has no career entries) — shows a message directing them to add entries.
+
+**Gotchas discovered:**
+- No new gotchas — the frontend patterns established in Phase 2.3 (career page) transferred directly.
+
+**Test coverage:** Frontend builds cleanly. No frontend unit tests added (consistent with prior phases).
+
 ---
 
 ## Phase 4: Resume Writer Agent (Core)

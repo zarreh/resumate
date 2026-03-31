@@ -57,3 +57,4 @@ resumate/
 - [x] 2.3 — Career History UI (Frontend)
 - [x] 3.1 — Job Analyst Agent
 - [x] 3.2 — Entry Retrieval & Match Scoring
+- [x] 3.3 — Gate 1 UI (JD Analysis + Match Overview)
