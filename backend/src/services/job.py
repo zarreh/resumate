@@ -129,3 +129,29 @@ class JobService:
             .order_by(Session.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def fork_session(
+        self, user_id: uuid.UUID, source_session_id: uuid.UUID
+    ) -> Session:
+        """Create a new session forked from an existing one.
+
+        Copies: job_description_id, selected_entry_ids, context_text, style_preference.
+        Does NOT copy: enhanced_resume (must be regenerated).
+        """
+        source = await self.get_session(user_id, source_session_id)
+        if source is None:
+            raise ValueError("Source session not found")
+
+        new_session = Session(
+            user_id=user_id,
+            job_description_id=source.job_description_id,
+            current_gate="analysis",
+            selected_entry_ids=source.selected_entry_ids or [],
+            context_text=source.context_text,
+            style_preference=source.style_preference,
+            forked_from_id=source.id,
+        )
+        self._db.add(new_session)
+        await self._db.commit()
+        await self._db.refresh(new_session)
+        return new_session

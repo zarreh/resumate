@@ -54,6 +54,7 @@ class SessionResponse(BaseModel):
     style_preference: str | None
     analysis: JDAnalysis | None = None
     enhanced_resume: dict | None = None  # type: ignore[type-arg]
+    forked_from_id: str | None = None
     created_at: str
 
     model_config = {"from_attributes": True}
@@ -109,6 +110,7 @@ def _session_to_response(
         style_preference=session.style_preference,  # type: ignore[attr-defined]
         analysis=analysis,
         enhanced_resume=session.enhanced_resume,  # type: ignore[attr-defined]
+        forked_from_id=str(session.forked_from_id) if session.forked_from_id else None,  # type: ignore[attr-defined]
         created_at=session.created_at.isoformat(),  # type: ignore[attr-defined]
     )
 
@@ -988,3 +990,32 @@ async def get_cover_letter(
         return None
 
     return CoverLetterResponse(id=str(cl.id), content=cl.content)
+
+
+@router.post(
+    "/{session_id}/fork",
+    response_model=SessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def fork_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SessionResponse:
+    """Fork an existing session as a new starting point."""
+    svc = JobService(db)
+
+    try:
+        new_session = await svc.fork_session(current_user.id, session_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source session not found",
+        ) from None
+
+    jd = await svc.get_job_description(
+        current_user.id, new_session.job_description_id
+    )
+    analysis = JDAnalysis.model_validate(jd.analysis) if jd and jd.analysis else None
+
+    return _session_to_response(new_session, analysis=analysis)
