@@ -2,14 +2,15 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import type { JDAnalysis } from "@/types/session";
+import type { CompanyResearch, JDAnalysis } from "@/types/session";
 import { seniorityLabel } from "@/types/session";
 
 interface AnalysisViewProps {
   analysis: JDAnalysis;
+  companyResearch?: CompanyResearch | null;
 }
 
-export function AnalysisView({ analysis }: AnalysisViewProps) {
+export function AnalysisView({ analysis, companyResearch }: AnalysisViewProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -23,6 +24,63 @@ export function AnalysisView({ analysis }: AnalysisViewProps) {
           <span>{analysis.industry}</span>
         </div>
       </div>
+
+      {/* Company Research */}
+      {companyResearch && (
+        <Card className="p-4">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Company Research
+          </h3>
+          <div className="space-y-3 text-sm">
+            {companyResearch.summary && (
+              <p>{companyResearch.summary}</p>
+            )}
+            {companyResearch.mission && (
+              <div>
+                <span className="font-medium">Mission: </span>
+                {companyResearch.mission}
+              </div>
+            )}
+            {companyResearch.products.length > 0 && (
+              <div>
+                <span className="font-medium">Products: </span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {companyResearch.products.map((p) => (
+                    <Badge key={p} variant="outline">{p}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {companyResearch.culture && (
+              <div>
+                <span className="font-medium">Culture: </span>
+                {companyResearch.culture}
+              </div>
+            )}
+            {companyResearch.recent_news.length > 0 && (
+              <div>
+                <span className="font-medium">Recent News:</span>
+                <ul className="mt-1 list-inside list-disc space-y-0.5">
+                  {companyResearch.recent_news.map((n, i) => (
+                    <li key={i}>{n}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-4 text-muted-foreground">
+              {companyResearch.headquarters && (
+                <span>HQ: {companyResearch.headquarters}</span>
+              )}
+              {companyResearch.size_and_funding && (
+                <span>{companyResearch.size_and_funding}</span>
+              )}
+              {companyResearch.industry && (
+                <span>{companyResearch.industry}</span>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Required Skills */}
       {analysis.required_skills.length > 0 && (

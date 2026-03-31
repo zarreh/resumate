@@ -22,7 +22,24 @@ export interface JobDescriptionResponse {
   id: string;
   raw_text: string;
   analysis: JDAnalysis | null;
+  company_research: CompanyResearch | null;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Company Research
+// ---------------------------------------------------------------------------
+
+export interface CompanyResearch {
+  company_name: string;
+  summary: string | null;
+  mission: string | null;
+  products: string[];
+  culture: string | null;
+  recent_news: string[];
+  size_and_funding: string | null;
+  headquarters: string | null;
+  industry: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -37,6 +54,7 @@ export interface SessionResponse {
   context_text: string | null;
   style_preference: string | null;
   analysis: JDAnalysis | null;
+  company_research: CompanyResearch | null;
   enhanced_resume: EnhancedResume | null;
   forked_from_id: string | null;
   created_at: string;

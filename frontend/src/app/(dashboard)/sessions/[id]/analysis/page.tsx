@@ -138,7 +138,7 @@ export default function AnalysisPage() {
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Left column: Analysis */}
             <div className="space-y-6">
-              <AnalysisView analysis={session.analysis} />
+              <AnalysisView analysis={session.analysis} companyResearch={session.company_research} />
             </div>
 
             {/* Right column: Match + Entries */}
