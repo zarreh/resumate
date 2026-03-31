@@ -70,3 +70,4 @@ resumate/
 - [x] 6.2 — ATS Scoring
 - [x] 6.3 — Diff View Polish
 - [x] 6.4 — Cover Letter Generation
+- [x] 6.5 — Strength-of-Change Control

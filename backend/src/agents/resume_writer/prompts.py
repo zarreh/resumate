@@ -78,3 +78,34 @@ remaining bullets in the resume.
 
 Now produce the COMPLETE enhanced resume applying this calibrated style.
 """
+
+# ---------------------------------------------------------------------------
+# Strength-of-change modifiers
+# ---------------------------------------------------------------------------
+
+STRENGTH_PROMPTS: dict[str, str] = {
+    "conservative": """\
+## Enhancement Strength: CONSERVATIVE
+- Keep bullets very close to the original wording — only make minimal tweaks
+- Focus on inserting ATS keywords naturally without rewriting sentences
+- Preserve the candidate's original voice and phrasing as much as possible
+- Only add quantifiable results if they are directly stated or very clearly implied
+- Prefer subtle rephrasing over aggressive restructuring
+""",
+    "moderate": """\
+## Enhancement Strength: MODERATE (Default)
+- Rephrase bullets to highlight JD-relevant skills while preserving factual content
+- Use strong action verbs and improve clarity
+- Add quantitative results where the original implies them
+- Balance between the candidate's voice and ATS optimization
+""",
+    "aggressive": """\
+## Enhancement Strength: AGGRESSIVE
+- Significantly restructure bullets to maximize JD alignment and ATS keyword density
+- Lead every bullet with the strongest possible action verb
+- Aggressively incorporate JD keywords and terminology throughout
+- Reorder information within bullets to front-load the most relevant details
+- Combine or split bullets if it improves impact — but NEVER fabricate achievements
+- Push the professional tone to its maximum while staying truthful
+""",
+}

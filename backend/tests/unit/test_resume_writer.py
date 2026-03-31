@@ -418,6 +418,48 @@ class TestWriteResumeNode:
         assert "Make bullets punchier" in system_msg.content
         assert "calibrating" in system_msg.content.lower()
 
+    @pytest.mark.parametrize(
+        "pref,expected_keyword",
+        [
+            ("conservative", "CONSERVATIVE"),
+            ("moderate", "MODERATE"),
+            ("aggressive", "AGGRESSIVE"),
+        ],
+    )
+    async def test_node_strength_of_change_prompt(
+        self, pref: str, expected_keyword: str
+    ) -> None:
+        """Node includes the correct strength-of-change block in the system prompt."""
+        from src.agents.resume_writer.agent import ResumeWriterAgent
+        from src.agents.resume_writer.schemas import ResumeWriterOutput
+
+        mock_model = MagicMock()
+        agent = ResumeWriterAgent.__new__(ResumeWriterAgent)
+        agent._model = mock_model
+
+        mock_structured = AsyncMock()
+        mock_structured.ainvoke.return_value = ResumeWriterOutput(
+            resume=SAMPLE_RESUME
+        )
+        mock_model.with_structured_output.return_value = mock_structured
+
+        state = {
+            "jd_analysis": SAMPLE_ANALYSIS.model_dump(),
+            "ranked_entries": [e.model_dump() for e in SAMPLE_ENTRIES],
+            "match_result": SAMPLE_MATCH.model_dump(),
+            "context_text": "",
+            "style_feedback": "",
+            "style_preference": pref,
+            "mode": "full",
+            "resume": None,
+        }
+
+        await agent._write_resume_node(state)
+
+        call_args = mock_structured.ainvoke.call_args[0][0]
+        system_msg = call_args[0]
+        assert expected_keyword in system_msg.content
+
 
 # ---------------------------------------------------------------------------
 # Schema tests

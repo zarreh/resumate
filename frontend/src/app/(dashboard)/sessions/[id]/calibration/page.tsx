@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { CalibrationView } from "@/components/session/CalibrationView";
 import { StyleFeedback } from "@/components/session/StyleFeedback";
 import { GateApprovalBar } from "@/components/session/GateApprovalBar";
@@ -13,6 +14,30 @@ import {
 } from "@/lib/api/session";
 import type { EnhancedResume, SessionResponse } from "@/types/session";
 
+type StrengthOption = "conservative" | "moderate" | "aggressive";
+
+const STRENGTH_OPTIONS: {
+  value: StrengthOption;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "conservative",
+    label: "Conservative",
+    description: "Minimal changes — preserves your original wording",
+  },
+  {
+    value: "moderate",
+    label: "Moderate",
+    description: "Balanced rephrasing with ATS optimization",
+  },
+  {
+    value: "aggressive",
+    label: "Aggressive",
+    description: "Maximum rewrite for JD alignment and impact",
+  },
+];
+
 export default function CalibrationPage() {
   const params = useParams();
   const router = useRouter();
@@ -21,6 +46,7 @@ export default function CalibrationPage() {
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [resume, setResume] = useState<EnhancedResume | null>(null);
   const [styleFeedback, setStyleFeedback] = useState("");
+  const [strength, setStrength] = useState<StrengthOption>("moderate");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -30,6 +56,16 @@ export default function CalibrationPage() {
     try {
       const data = await getSession(sessionId);
       setSession(data);
+
+      // Restore saved style preference if present
+      if (
+        data.style_preference &&
+        ["conservative", "moderate", "aggressive"].includes(
+          data.style_preference
+        )
+      ) {
+        setStrength(data.style_preference as StrengthOption);
+      }
 
       // If the session already has an enhanced resume, use it
       if (data.enhanced_resume) {
@@ -41,7 +77,12 @@ export default function CalibrationPage() {
       // Otherwise, generate the initial preview
       setGenerating(true);
       try {
-        const result = await generateResume(sessionId, "full");
+        const result = await generateResume(
+          sessionId,
+          "full",
+          "",
+          strength
+        );
         setResume(result.resume);
       } catch {
         toast.error("Failed to generate resume preview");
@@ -53,27 +94,23 @@ export default function CalibrationPage() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
 
   const handleRegenerate = async () => {
-    if (!styleFeedback.trim()) {
-      toast.error("Please provide style feedback before regenerating");
-      return;
-    }
-
     setGenerating(true);
     try {
       const result = await generateResume(
         sessionId,
-        "calibration",
-        styleFeedback
+        styleFeedback.trim() ? "calibration" : "full",
+        styleFeedback,
+        strength
       );
       setResume(result.resume);
-      toast.success("Resume regenerated with your style feedback");
+      toast.success("Resume regenerated");
     } catch {
       toast.error("Failed to regenerate resume");
     } finally {
@@ -86,7 +123,12 @@ export default function CalibrationPage() {
     try {
       // If there's style feedback, do a final calibrated generation
       if (styleFeedback.trim() && resume) {
-        await generateResume(sessionId, "calibration", styleFeedback);
+        await generateResume(
+          sessionId,
+          "calibration",
+          styleFeedback,
+          strength
+        );
       }
 
       await approveGate(sessionId, "calibration");
@@ -123,8 +165,9 @@ export default function CalibrationPage() {
           <div>
             <h1 className="text-2xl font-bold">Calibration</h1>
             <p className="text-muted-foreground">
-              Review the sample bullets and summary. Provide feedback on the
-              style and tone, then approve to generate the full resume.
+              Review the sample bullets and summary. Adjust the enhancement
+              strength, provide feedback on the style, then approve to generate
+              the full resume.
             </p>
           </div>
 
@@ -141,24 +184,46 @@ export default function CalibrationPage() {
                 <CalibrationView resume={resume} />
               </div>
 
-              {/* Right: Feedback (2 cols) */}
+              {/* Right: Controls (2 cols) */}
               <div className="space-y-6 lg:col-span-2">
+                {/* Strength of change */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Enhancement Strength
+                  </h3>
+                  <div className="space-y-1.5">
+                    {STRENGTH_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setStrength(opt.value)}
+                        className={cn(
+                          "w-full rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                          strength === opt.value
+                            ? "border-primary bg-primary/5 font-medium"
+                            : "border-border hover:bg-muted"
+                        )}
+                      >
+                        <span className="block">{opt.label}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {opt.description}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <StyleFeedback
                   value={styleFeedback}
                   onChange={setStyleFeedback}
                 />
 
-                {styleFeedback.trim() && (
-                  <button
-                    onClick={handleRegenerate}
-                    disabled={generating}
-                    className="w-full rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
-                  >
-                    {generating
-                      ? "Regenerating..."
-                      : "Regenerate with Feedback"}
-                  </button>
-                )}
+                <button
+                  onClick={handleRegenerate}
+                  disabled={generating}
+                  className="w-full rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                >
+                  {generating ? "Regenerating..." : "Regenerate Preview"}
+                </button>
               </div>
             </div>
           ) : (

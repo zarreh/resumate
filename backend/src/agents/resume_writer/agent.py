@@ -9,7 +9,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
-from src.agents.resume_writer.prompts import CALIBRATION_PROMPT, SYSTEM_PROMPT
+from src.agents.resume_writer.prompts import CALIBRATION_PROMPT, STRENGTH_PROMPTS, SYSTEM_PROMPT
 from src.agents.resume_writer.schemas import ResumeWriterOutput
 from src.schemas.job import JDAnalysis
 from src.schemas.matching import GapAnalysis, MatchResult, RankedEntry
@@ -27,6 +27,7 @@ class WriterState(TypedDict):
     match_result: dict[str, Any]
     context_text: str
     style_feedback: str
+    style_preference: str  # "conservative" | "moderate" | "aggressive"
     mode: str  # "full" or "calibration"
     resume: dict[str, Any] | None
 
@@ -134,14 +135,19 @@ class ResumeWriterAgent:
         structured_model = self._model.with_structured_output(ResumeWriterOutput)
 
         mode = state.get("mode", "full")
+        style_pref = state.get("style_preference", "moderate")
+        strength_block = STRENGTH_PROMPTS.get(style_pref, STRENGTH_PROMPTS["moderate"])
+
         if mode == "calibration" and state.get("style_feedback"):
             system_content = (
                 SYSTEM_PROMPT
                 + "\n\n"
+                + strength_block
+                + "\n\n"
                 + CALIBRATION_PROMPT.format(feedback=state["style_feedback"])
             )
         else:
-            system_content = SYSTEM_PROMPT
+            system_content = SYSTEM_PROMPT + "\n\n" + strength_block
 
         user_content = self._build_user_message(state)
 
@@ -181,6 +187,7 @@ class ResumeWriterAgent:
         match_result: MatchResult,
         context_text: str = "",
         style_feedback: str = "",
+        style_preference: str = "moderate",
         mode: str = "full",
     ) -> EnhancedResume:
         """Generate a tailored resume from JD analysis and career entries.
@@ -191,6 +198,7 @@ class ResumeWriterAgent:
             match_result: Match scoring results with gap analysis.
             context_text: Optional additional context from the user.
             style_feedback: Optional style calibration feedback.
+            style_preference: Enhancement strength (conservative/moderate/aggressive).
             mode: "full" for standard generation, "calibration" for style-aware.
 
         Returns:
@@ -202,6 +210,7 @@ class ResumeWriterAgent:
             "match_result": match_result.model_dump(),
             "context_text": context_text,
             "style_feedback": style_feedback,
+            "style_preference": style_preference,
             "mode": mode,
             "resume": None,
         }

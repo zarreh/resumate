@@ -261,6 +261,9 @@ class GenerateRequest(BaseModel):
 
     style_feedback: str = ""
     mode: str = Field(default="full", pattern="^(full|calibration)$")
+    style_preference: str = Field(
+        default="moderate", pattern="^(conservative|moderate|aggressive)$"
+    )
 
 
 class EnhancedResumeResponse(BaseModel):
@@ -320,6 +323,11 @@ async def generate_resume(
 
     # Generate the resume
     req = body or GenerateRequest()
+
+    # Save style preference on session
+    if req.style_preference:
+        await resume_svc.update_style_preference(session, req.style_preference)
+
     try:
         agent = ResumeWriterAgent(llm_config)
         resume = await agent.write(
@@ -328,6 +336,7 @@ async def generate_resume(
             match_result=match_result,
             context_text=session.context_text or "",
             style_feedback=req.style_feedback,
+            style_preference=req.style_preference,
             mode=req.mode,
         )
     except Exception as exc:
@@ -476,6 +485,7 @@ async def submit_feedback(
             match_result=match_result,
             context_text=session.context_text or "",
             style_feedback=revision_feedback,
+            style_preference=session.style_preference or "moderate",
             mode="calibration",
         )
     except Exception as exc:

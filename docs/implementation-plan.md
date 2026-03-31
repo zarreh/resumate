@@ -1616,6 +1616,18 @@ frontend/src/types/chat.ts
 - Stored in `sessions.style_preference`
 - Modifies Resume Writer system prompt behavior
 
+**Retrospective (completed):**
+- Added `STRENGTH_PROMPTS` dict to `resume_writer/prompts.py` with conservative/moderate/aggressive blocks
+- Extended `WriterState` with `style_preference` field; `_write_resume_node` injects the matching strength prompt into the system message
+- `ResumeWriterAgent.write()` now accepts `style_preference` param, defaults to `"moderate"`
+- `GenerateRequest` schema gains `style_preference` field with regex validation
+- Generate endpoint saves preference via `ResumeSessionService.update_style_preference()` and passes it through
+- Feedback revision path also passes the session's saved `style_preference`
+- Frontend calibration page adds a 3-button selector (conservative/moderate/aggressive) above the style feedback textarea
+- `generateResume()` API client updated to accept and send `style_preference`
+- 3 parametrized tests added for strength prompt injection; 271 total tests pass
+- `update_style_preference` already existed on `ResumeSessionService` — no new service code needed
+
 ---
 
 ## Phase 7: Learning & History (Moderate Detail)

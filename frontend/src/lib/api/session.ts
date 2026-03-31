@@ -79,7 +79,8 @@ export async function getMatch(sessionId: string): Promise<MatchResponse> {
 export async function generateResume(
   sessionId: string,
   mode: "full" | "calibration" = "full",
-  styleFeedback = ""
+  styleFeedback = "",
+  stylePreference: "conservative" | "moderate" | "aggressive" = "moderate"
 ): Promise<GenerateResponse> {
   return apiClient<GenerateResponse>(
     `/api/v1/sessions/${sessionId}/generate`,
@@ -88,6 +89,7 @@ export async function generateResume(
       body: JSON.stringify({
         mode,
         style_feedback: styleFeedback,
+        style_preference: stylePreference,
       }),
     }
   );
