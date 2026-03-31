@@ -24,6 +24,7 @@ from src.services.llm_config import get_llm_config
 from src.services.match_scoring import MatchScorer
 from src.services.resume_session import ResumeSessionService
 from src.services.retrieval import RetrievalService
+from src.services.session_learning import SessionLearningService
 
 router = APIRouter()
 
@@ -735,6 +736,67 @@ async def ats_score_resume(
     result = scorer.score(current_resume, jd_analysis)
 
     return ATSScoreResponse(score=result.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# Session Completion — record decisions for future learning
+# ---------------------------------------------------------------------------
+
+
+class CompleteResponse(BaseModel):
+    """Response after completing a session and recording decisions."""
+
+    session_id: str
+    decision_id: str
+    message: str = "Session completed and decisions recorded"
+
+
+@router.post("/{session_id}/complete", response_model=CompleteResponse)
+async def complete_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CompleteResponse:
+    """Mark a session as complete and store decisions for future learning.
+
+    Should be called when the user is satisfied with the final resume.
+    Records the session's decisions snapshot with the JD embedding for
+    cosine similarity retrieval in future sessions.
+    """
+    svc = JobService(db)
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    if session.current_gate != "final":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Session must be at 'final' gate to complete (currently at '{session.current_gate}')",
+        )
+
+    if session.enhanced_resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Session has no enhanced resume to record",
+        )
+
+    llm_config = get_llm_config()
+    learning_svc = SessionLearningService(db, llm_config)
+
+    try:
+        decision = await learning_svc.complete_session(session, current_user.id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record session decisions: {exc}",
+        ) from exc
+
+    return CompleteResponse(
+        session_id=str(session.id),
+        decision_id=str(decision.id),
+    )
 
 
 # ---------------------------------------------------------------------------
