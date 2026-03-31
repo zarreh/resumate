@@ -13,8 +13,11 @@ from src.core.database import get_db
 from src.core.dependencies import get_current_user
 from src.models.user import User
 from src.schemas.job import JDAnalysis
+from src.schemas.matching import MatchResult, RankedEntry
 from src.services.job import JobService
 from src.services.llm_config import get_llm_config
+from src.services.match_scoring import MatchScorer
+from src.services.retrieval import RetrievalService
 
 router = APIRouter()
 
@@ -181,3 +184,60 @@ async def approve_gate(
     analysis = JDAnalysis.model_validate(jd.analysis) if jd and jd.analysis else None
 
     return _session_to_response(session, analysis=analysis)
+
+
+# ---------------------------------------------------------------------------
+# Match scoring
+# ---------------------------------------------------------------------------
+
+
+class MatchResponse(BaseModel):
+    """Response for match scoring on a session."""
+
+    ranked_entries: list[RankedEntry]
+    match_result: MatchResult
+
+
+@router.get("/{session_id}/match", response_model=MatchResponse)
+async def get_match(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MatchResponse:
+    """Get ranked entries and match scoring for a session's JD."""
+    svc = JobService(db)
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    # Load the JD and its analysis
+    jd = await svc.get_job_description(current_user.id, session.job_description_id)
+    if jd is None or jd.analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description has no analysis",
+        )
+
+    llm_config = get_llm_config()
+    retrieval = RetrievalService(db, llm_config)
+
+    # Ensure JD has an embedding
+    if jd.embedding is None:
+        await retrieval.embed_job_description(jd)
+
+    # Ensure career entries have embeddings
+    await retrieval.embed_all_entries(current_user.id)
+
+    # Find relevant entries
+    ranked = await retrieval.find_relevant_entries(
+        current_user.id, list(jd.embedding), top_k=20
+    )
+
+    # Score the match
+    analysis = JDAnalysis.model_validate(jd.analysis)
+    scorer = MatchScorer()
+    match_result = scorer.score(analysis, ranked)
+
+    return MatchResponse(ranked_entries=ranked, match_result=match_result)

@@ -56,3 +56,4 @@ resumate/
 - [x] 2.4 — Career History API Endpoints
 - [x] 2.3 — Career History UI (Frontend)
 - [x] 3.1 — Job Analyst Agent
+- [x] 3.2 — Entry Retrieval & Match Scoring

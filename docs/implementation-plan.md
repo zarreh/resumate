@@ -1029,6 +1029,25 @@ class MatchScorer:
 - Gap analysis identifies unmatched JD requirements
 - Section order recommendation based on JD emphasis
 
+### Retrospective (3.2)
+
+**What changed from the plan:**
+- `RetrievalService` handles both embedding generation and vector search in a single class (plan had these as separate concerns). It uses `LLMConfig.get_embedding_model()` for embedding generation.
+- `MatchScorer` works on `RankedEntry` objects (from retrieval) rather than raw `CareerHistoryEntry` ORM objects — cleaner separation since scoring doesn't need DB access.
+- Added `GET /api/v1/sessions/{id}/match` endpoint to sessions API — combines retrieval + scoring in one call for the frontend. This endpoint auto-generates embeddings for any entries or JDs that don't have them yet.
+- Match scoring is purely deterministic (no LLM call) — uses tag-based matching with case-insensitive and partial string comparison. Weighted scoring: required skills 50%, tech stack 30%, preferred skills 20%.
+- `embed_all_entries` method generates embeddings for all entries missing them (lazy embedding generation on first match request).
+
+**Gotchas discovered:**
+- pgvector cosine distance operator `<=>` returns distance (lower is better), not similarity. Similarity = `1 - distance`.
+- Raw SQL with `text()` is needed for pgvector vector operations since SQLAlchemy ORM doesn't natively support the `<=>` operator in query builder.
+
+**Test coverage:** 15 new tests (10 match scorer, 3 section order, 2 schema), total suite: 133 tests passing. Retrieval vector search not unit-tested (requires pgvector); will be covered by integration tests.
+
+**Adjustments for upcoming sub-phases:**
+- Phase 3.3 (Gate 1 UI) can call `GET /sessions/{id}/match` to get ranked entries and match scores for display.
+- The match endpoint lazily generates embeddings, so the frontend doesn't need a separate "generate embeddings" step.
+
 ---
 
 ### 3.3 — Gate 1 UI (JD Analysis + Match Overview)
