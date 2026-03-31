@@ -40,6 +40,7 @@ class JobDescriptionResponse(BaseModel):
     id: str
     raw_text: str
     analysis: JDAnalysis | None
+    company_research: dict | None = None
     created_at: str
 
     model_config = {"from_attributes": True}

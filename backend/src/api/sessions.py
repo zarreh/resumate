@@ -20,6 +20,7 @@ from src.models.user import User
 from src.schemas.job import JDAnalysis
 from src.schemas.matching import MatchResult, RankedEntry
 from src.schemas.resume import EnhancedResume
+from src.services.company_research import CompanyResearchService
 from src.services.jd_scraper import ScraperError, fetch_job_description
 from src.services.job import JobService
 from src.services.llm_config import get_llm_config
@@ -61,6 +62,7 @@ class SessionResponse(BaseModel):
     context_text: str | None
     style_preference: str | None
     analysis: JDAnalysis | None = None
+    company_research: dict | None = None
     enhanced_resume: dict | None = None  # type: ignore[type-arg]
     forked_from_id: str | None = None
     created_at: str
@@ -106,7 +108,7 @@ _GATE_NEXT = {
 
 
 def _session_to_response(
-    session: object, analysis: JDAnalysis | None = None
+    session: object, analysis: JDAnalysis | None = None, company_research: dict | None = None
 ) -> SessionResponse:
     """Convert a Session ORM object to a response schema."""
     return SessionResponse(
@@ -117,6 +119,7 @@ def _session_to_response(
         context_text=session.context_text,  # type: ignore[attr-defined]
         style_preference=session.style_preference,  # type: ignore[attr-defined]
         analysis=analysis,
+        company_research=company_research,
         enhanced_resume=session.enhanced_resume,  # type: ignore[attr-defined]
         forked_from_id=str(session.forked_from_id) if session.forked_from_id else None,  # type: ignore[attr-defined]
         created_at=session.created_at.isoformat(),  # type: ignore[attr-defined]
@@ -164,10 +167,19 @@ async def start_session(
     # 3. Store analysis on the JD
     jd = await svc.update_analysis(jd, analysis)
 
+    # 3b. Run company research if company name is available
+    if analysis.company_name:
+        try:
+            research_svc = CompanyResearchService(get_llm_config())
+            research = await research_svc.research(analysis.company_name)
+            jd = await svc.update_company_research(jd, research.model_dump())
+        except Exception:
+            logger.exception("Company research failed for %s", analysis.company_name)
+
     # 4. Create session
     session = await svc.create_session(current_user.id, jd.id)
 
-    return _session_to_response(session, analysis=analysis)
+    return _session_to_response(session, analysis=analysis, company_research=jd.company_research)
 
 
 @router.get("/", response_model=list[SessionListItem])
@@ -218,7 +230,7 @@ async def get_session(
     jd = await svc.get_job_description(current_user.id, session.job_description_id)
     analysis = JDAnalysis.model_validate(jd.analysis) if jd and jd.analysis else None
 
-    return _session_to_response(session, analysis=analysis)
+    return _session_to_response(session, analysis=analysis, company_research=jd.company_research if jd else None)
 
 
 @router.post("/{session_id}/approve", response_model=SessionResponse)
@@ -262,7 +274,7 @@ async def approve_gate(
     jd = await svc.get_job_description(current_user.id, session.job_description_id)
     analysis = JDAnalysis.model_validate(jd.analysis) if jd and jd.analysis else None
 
-    return _session_to_response(session, analysis=analysis)
+    return _session_to_response(session, analysis=analysis, company_research=jd.company_research if jd else None)
 
 
 # ---------------------------------------------------------------------------
@@ -1037,4 +1049,4 @@ async def fork_session(
     )
     analysis = JDAnalysis.model_validate(jd.analysis) if jd and jd.analysis else None
 
-    return _session_to_response(new_session, analysis=analysis)
+    return _session_to_response(new_session, analysis=analysis, company_research=jd.company_research if jd else None)

@@ -57,6 +57,15 @@ class JobService:
         await self._db.refresh(jd)
         return jd
 
+    async def update_company_research(
+        self, jd: JobDescription, research: dict
+    ) -> JobDescription:
+        """Store company research data on an existing job description."""
+        jd.company_research = research  # type: ignore[assignment]
+        await self._db.commit()
+        await self._db.refresh(jd)
+        return jd
+
     async def list_job_descriptions(
         self, user_id: uuid.UUID
     ) -> list[JobDescription]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,9 +13,12 @@ from src.core.database import get_db
 from src.core.dependencies import get_current_user
 from src.models.user import User
 from src.schemas.job import JDAnalysis, JobDescriptionResponse, JobParseRequest
+from src.services.company_research import CompanyResearchService
 from src.services.jd_scraper import ScraperError, fetch_job_description
 from src.services.job import JobService
 from src.services.llm_config import get_llm_config
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -31,6 +35,7 @@ def _jd_to_response(jd: object) -> JobDescriptionResponse:
         id=str(jd.id),  # type: ignore[attr-defined]
         raw_text=jd.raw_text,  # type: ignore[attr-defined]
         analysis=JDAnalysis.model_validate(analysis_dict) if analysis_dict else None,
+        company_research=jd.company_research,  # type: ignore[attr-defined]
         created_at=jd.created_at.isoformat(),  # type: ignore[attr-defined]
     )
 
@@ -75,6 +80,16 @@ async def parse_job_description(
 
     # Store the analysis
     jd = await svc.update_analysis(jd, analysis)
+
+    # Run company research if company name is available
+    if analysis.company_name:
+        try:
+            research_svc = CompanyResearchService(get_llm_config())
+            research = await research_svc.research(analysis.company_name)
+            jd = await svc.update_company_research(jd, research.model_dump())
+        except Exception:
+            logger.exception("Company research failed for %s", analysis.company_name)
+
     return _jd_to_response(jd)
 
 
