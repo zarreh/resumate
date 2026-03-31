@@ -60,3 +60,4 @@ resumate/
 - [x] 3.3 — Gate 1 UI (JD Analysis + Match Overview)
 - [x] 4.1 — Resume Writer Agent (Basic)
 - [x] 4.2 — Calibration Round (Gate 2)
+- [x] 4.3a — Gate 3 UI: Full Draft Display + Diff

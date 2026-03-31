@@ -1261,6 +1261,19 @@ frontend/src/components/diff/
 - Skills section shows with add/remove
 - Layout handles long resumes with smooth scrolling
 
+### Retrospective (4.3a)
+
+**What changed from the plan:**
+- `AnnotationBadge.tsx` and `ATSScoreCard.tsx` deferred — these are Phase 6.1/6.2 features (Reviewer Agent and ATS Scoring). The Gate 3 review page works without them.
+- No separate `DiffProvider.tsx` or `diff` npm package — reused the `BulletDiff.tsx` LCS-based diff from Phase 4.2.
+- `FullDraftView.tsx` is the top-level wrapper that composes `SectionView` ← `BulletCard` ← `BulletDiff`.
+- `SkillsEditor.tsx` supports both read-only mode and edit mode with add/remove functionality via badges.
+- Review page includes a status bar showing approved/rejected/pending counts.
+- `BulletCard.tsx` includes approve/reject/edit buttons (controlled by `showControls` prop), with visual status colors (green/red border+background).
+- Routes use `sessions/` (plural) consistent with Phase 3.3, not `session/` (singular) from the original plan.
+
+**Test coverage:** Frontend builds cleanly. No frontend unit tests. Backend unchanged (154 tests passing).
+
 ---
 
 ### 4.3b — Gate 3: Per-Bullet Approval + Feedback Loop
