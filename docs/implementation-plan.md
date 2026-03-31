@@ -1528,6 +1528,22 @@ frontend/src/types/chat.ts
 - Tool usage is displayed
 - Auto-scroll to bottom (respects user scroll position)
 
+### Retrospective (5.3)
+
+**What changed from the plan:**
+- Chat is a full page at `/chat` (accessible via sidebar "Chat" link) rather than a collapsible sidebar/drawer. A dedicated page is simpler and avoids z-index/layout complexity. Can be refactored into an overlay panel later if desired.
+- No `StreamingMessage.tsx` component — streaming is not implemented yet (the backend uses REST, not WebSocket, for chat). The `ThinkingIndicator` shows a loading spinner during the API call instead.
+- The `useChat` hook uses REST-based communication (via `sendChatMessage`) rather than WebSocket. Conversation history is maintained client-side and sent with each request. This is simpler and works well for the current REST-only backend.
+- Component layout: `ChatPanel` (top-level) → `MessageList` → `MessageBubble` + `ToolCallDisplay`. Plus `ChatInput` and `ThinkingIndicator`.
+- `MessageList` implements smart auto-scroll: scrolls to bottom on new messages unless the user has scrolled up (>50px from bottom).
+- `MessageBubble` uses user/assistant role-based styling: user messages right-aligned with primary color, assistant messages left-aligned with muted background and bot icon.
+- `ToolCallDisplay` renders tool calls as small badges with wrench icon beneath the assistant message.
+
+**Gotchas discovered:**
+- The sidebar links use `/dashboard/chat` but Next.js route groups `(dashboard)` don't add `/dashboard` to the URL. The actual route is `/chat`. This matches the existing pattern for `/career` and `/sessions` — the sidebar href prefix is a known discrepancy from earlier phases (the sidebar was scaffolded with `/dashboard/*` paths but the routes resolve without that prefix).
+
+**Test coverage:** Frontend builds cleanly. No frontend unit tests added (consistent with prior phases).
+
 ---
 
 ## Phase 6: Review & Polish (Moderate Detail)
