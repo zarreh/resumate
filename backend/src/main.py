@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.auth import router as auth_router
 from src.api.career import router as career_router
 from src.api.health import router as health_router
+from src.api.jobs import router as jobs_router
+from src.api.sessions import router as sessions_router
 from src.api.websocket import router as ws_router
 from src.core.config import settings
 
@@ -22,4 +24,6 @@ app.add_middleware(
 app.include_router(health_router, prefix="/api/v1", tags=["health"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(career_router, prefix="/api/v1/career", tags=["career"])
+app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
+app.include_router(sessions_router, prefix="/api/v1/sessions", tags=["sessions"])
 app.include_router(ws_router, prefix="/api/v1", tags=["websocket"])

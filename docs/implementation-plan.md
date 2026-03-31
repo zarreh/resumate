@@ -965,6 +965,27 @@ class JDAnalysis(BaseModel):
 - Analysis is stored in `job_descriptions` table with embedding
 - Tests with sample JDs verify field extraction
 
+### Retrospective (3.1)
+
+**What changed from the plan:**
+- No `tools.py` file created — web scraper tool is deferred to Phase 8.1 as planned. The agent is a single-node LangGraph graph with structured output, no tools needed.
+- Added `backend/src/api/sessions.py` with session management endpoints (`POST /start`, `GET /{id}`, `POST /{id}/approve`) — not originally in the 3.1 plan but needed for the session workflow that starts with JD analysis.
+- Added `backend/src/services/job.py` — JobService handles CRUD for job descriptions and sessions (create, get, update analysis, list, gate advancement).
+- `JDAnalysis` schema placed in `backend/src/schemas/job.py` (not in the agent's `schemas.py`), making it reusable across API routes and other services. The agent's `schemas.py` contains only the `JDAnalysisOutput` wrapper for structured LLM output.
+- Embedding generation deferred — JD embeddings are not generated on parse yet, same pattern as career entries. Will be added in Phase 3.2 when retrieval is implemented.
+- Gate progression map in sessions API: `analysis → calibration → review → final`.
+
+**Gotchas discovered:**
+- Lazy imports inside FastAPI endpoint functions (`from src.agents... import ...`) make `unittest.mock.patch` fail because the import target doesn't exist as a module attribute. Solution: use top-level imports so patching `src.api.jobs.JobAnalystAgent` works correctly.
+- LangGraph's `StateGraph.compile()` returns a `CompiledGraph` that supports `ainvoke()` directly with a `TypedDict` state.
+
+**Test coverage:** 20 new tests (4 agent unit, 3 schema, 3 jobs API, 3 job history/get, 7 session endpoints), total suite: 118 tests passing.
+
+**Adjustments for upcoming sub-phases:**
+- Phase 3.2 should add embedding generation when JDs are parsed (populate `job_descriptions.embedding`).
+- Phase 3.3 (Gate 1 UI) can use `POST /api/v1/sessions/start` to start a session and `POST /api/v1/sessions/{id}/approve` to advance past Gate 1.
+- Session response includes the JD analysis inline, so the frontend can render it without a separate API call.
+
 ---
 
 ### 3.2 — Entry Retrieval & Match Scoring
