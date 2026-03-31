@@ -1687,9 +1687,22 @@ frontend/src/types/chat.ts
 
 ## Phase 8: Extended Features (Moderate Detail)
 
-### 8.1 — URL-Based JD Parsing
+### 8.1 — URL-Based JD Parsing ✅
 - `httpx` + `BeautifulSoup` for static pages
 - Sanitize scraped content before LLM (untrusted input)
+
+#### Retrospective
+- Created `jd_scraper.py` service with `fetch_job_description(url)` — uses `httpx.AsyncClient` with 15s timeout and `beautifulsoup4` (lxml parser) for HTML extraction.
+- Scraper strips `<script>`, `<style>`, `<nav>`, `<footer>`, `<header>`, `<noscript>`, `<svg>`, `<img>`, `<iframe>`, `<form>` tags before extracting text.
+- Prefers `<main>`, `<article>`, `[role=main]`, or elements with job/description/posting/content classes for targeted extraction.
+- 5 MB max response size, content-type validation (must be text/html or text/plain), blank line collapsing.
+- `ScraperError` exception hierarchy maps to HTTP 422 in endpoint handlers.
+- `JobParseRequest` and `SessionStartRequest` updated with `model_validator` — requires at least one of `text` or `url`. Both fields are now optional.
+- Both `POST /jobs/parse` and `POST /sessions/start` endpoints check for `body.url`, call `fetch_job_description()`, then proceed with the extracted text through the existing agent pipeline. Agent code unchanged.
+- Frontend `JDInput` component now has a toggle between "Paste Text" and "From URL" modes with `FileText` and `Link2` icons. URL mode shows a single `<Input type="url">` instead of the textarea.
+- `startSession()` and `parseJobDescription()` API client functions updated to accept `{ text?, url? }` params instead of a plain string.
+- 25 new tests: 8 HTML extraction, 5 HTTP fetch mocking, 5 schema validation, 2 jobs endpoint, 2 sessions endpoint, 3 session start URL flow.
+- Added `beautifulsoup4` and `lxml` as dependencies.
 
 ### 8.2 — Company Research Enrichment
 - Web search tool (`tavily` or `duckduckgo-search`)

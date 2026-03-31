@@ -74,3 +74,4 @@ resumate/
 - [x] 7.1 — Past Session Learning
 - [x] 7.2 — Version History
 - [x] 7.3 — Retrieval Quality Dashboard
+- [x] 8.1 — URL-Based JD Parsing
