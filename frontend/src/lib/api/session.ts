@@ -8,6 +8,7 @@ import type {
   JobDescriptionResponse,
   MatchResponse,
   ReviewResponse,
+  SessionListItem,
   SessionResponse,
 } from "@/types/session";
 
@@ -43,6 +44,10 @@ export async function startSession(text: string): Promise<SessionResponse> {
     method: "POST",
     body: JSON.stringify({ text }),
   });
+}
+
+export async function listSessions(): Promise<SessionListItem[]> {
+  return apiClient<SessionListItem[]>("/api/v1/sessions/");
 }
 
 export async function getSession(id: string): Promise<SessionResponse> {
@@ -186,6 +191,19 @@ export async function completeSession(
 ): Promise<CompleteResponse> {
   return apiClient<CompleteResponse>(
     `/api/v1/sessions/${sessionId}/complete`,
+    { method: "POST" }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fork Session
+// ---------------------------------------------------------------------------
+
+export async function forkSession(
+  sessionId: string
+): Promise<SessionResponse> {
+  return apiClient<SessionResponse>(
+    `/api/v1/sessions/${sessionId}/fork`,
     { method: "POST" }
   );
 }

@@ -38,7 +38,22 @@ export interface SessionResponse {
   style_preference: string | null;
   analysis: JDAnalysis | null;
   enhanced_resume: EnhancedResume | null;
+  forked_from_id: string | null;
   created_at: string;
+}
+
+export interface SessionListItem {
+  id: string;
+  current_gate: string;
+  role_title: string | null;
+  company_name: string | null;
+  seniority_level: string | null;
+  industry: string | null;
+  style_preference: string | null;
+  forked_from_id: string | null;
+  has_resume: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // ---------------------------------------------------------------------------
