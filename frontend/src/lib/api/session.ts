@@ -3,6 +3,7 @@
 import { apiClient } from "../api";
 import type {
   ATSScoreResponse,
+  CoverLetterResponse,
   GenerateResponse,
   JobDescriptionResponse,
   MatchResponse,
@@ -144,5 +145,26 @@ export async function getATSScore(
   return apiClient<ATSScoreResponse>(
     `/api/v1/sessions/${sessionId}/ats-score`,
     { method: "POST" }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cover Letter
+// ---------------------------------------------------------------------------
+
+export async function generateCoverLetter(
+  sessionId: string
+): Promise<CoverLetterResponse> {
+  return apiClient<CoverLetterResponse>(
+    `/api/v1/sessions/${sessionId}/cover-letter`,
+    { method: "POST" }
+  );
+}
+
+export async function getCoverLetter(
+  sessionId: string
+): Promise<CoverLetterResponse | null> {
+  return apiClient<CoverLetterResponse | null>(
+    `/api/v1/sessions/${sessionId}/cover-letter`
   );
 }

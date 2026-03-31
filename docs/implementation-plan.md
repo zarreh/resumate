@@ -1599,6 +1599,18 @@ frontend/src/types/chat.ts
 - Input: JD analysis + matched entries + enhanced summary
 - Store in `cover_letters` table
 
+### Retrospective
+- Implemented as single-node LangGraph agent following established pattern
+- `cover_letter` agent slot was already configured in llm.yaml (pointing to gpt4o)
+- `CoverLetter` model and table already existed from initial migration — no migration needed
+- Agent uses top 5 bullets (sorted by relevance) + summary + skills + JD analysis for context
+- System prompt enforces 250-400 words, no generic filler, mirrors JD keywords
+- API: `POST /sessions/{id}/cover-letter` (generate + store) and `GET /sessions/{id}/cover-letter` (retrieve latest)
+- Deferred imports in endpoint to avoid circular import issues
+- Frontend: Cover letter section on Final page with generate/regenerate button and content display
+- Used `whitespace-pre-wrap` for proper paragraph rendering
+- 10 tests (268 total passing)
+
 ### 6.5 — Strength-of-Change Control
 - Three-option select: conservative / moderate / aggressive
 - Stored in `sessions.style_preference`

@@ -725,3 +725,107 @@ async def ats_score_resume(
     result = scorer.score(current_resume, jd_analysis)
 
     return ATSScoreResponse(score=result.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# Cover Letter Generation
+# ---------------------------------------------------------------------------
+
+
+class CoverLetterResponse(BaseModel):
+    """Response containing the generated cover letter."""
+
+    id: str
+    content: str
+
+
+@router.post("/{session_id}/cover-letter", response_model=CoverLetterResponse)
+async def generate_cover_letter(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CoverLetterResponse:
+    """Generate a cover letter for the session's enhanced resume."""
+    from src.agents.cover_letter import CoverLetterAgent
+    from src.models.cover_letter import CoverLetter
+
+    svc = JobService(db)
+    resume_svc = ResumeSessionService(db)
+
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    current_resume = await resume_svc.get_enhanced_resume(session)
+    if current_resume is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No enhanced resume exists on this session",
+        )
+
+    jd = await svc.get_job_description(current_user.id, session.job_description_id)
+    if jd is None or jd.analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description has no analysis",
+        )
+
+    jd_analysis = JDAnalysis.model_validate(jd.analysis)
+
+    try:
+        llm_config = get_llm_config()
+        agent = CoverLetterAgent(llm_config)
+        content = await agent.generate(current_resume, jd_analysis)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to generate cover letter: {exc}",
+        ) from exc
+
+    # Store in DB
+    cover_letter = CoverLetter(
+        session_id=session.id,
+        user_id=current_user.id,
+        content=content,
+    )
+    db.add(cover_letter)
+    await db.commit()
+    await db.refresh(cover_letter)
+
+    return CoverLetterResponse(id=str(cover_letter.id), content=content)
+
+
+@router.get("/{session_id}/cover-letter", response_model=CoverLetterResponse | None)
+async def get_cover_letter(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CoverLetterResponse | None:
+    """Get the latest cover letter for a session."""
+    from sqlalchemy import select
+
+    from src.models.cover_letter import CoverLetter
+
+    svc = JobService(db)
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    result = await db.execute(
+        select(CoverLetter)
+        .where(
+            CoverLetter.session_id == session.id,
+            CoverLetter.user_id == current_user.id,
+        )
+        .order_by(CoverLetter.created_at.desc())
+        .limit(1)
+    )
+    cl = result.scalar_one_or_none()
+    if cl is None:
+        return None
+
+    return CoverLetterResponse(id=str(cl.id), content=cl.content)

@@ -5,10 +5,10 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileText } from "lucide-react";
-import { getSession } from "@/lib/api/session";
+import { Download, FileText, Mail } from "lucide-react";
+import { generateCoverLetter, getCoverLetter, getSession } from "@/lib/api/session";
 import { getAccessToken } from "@/lib/api";
-import type { EnhancedResume, SessionResponse } from "@/types/session";
+import type { CoverLetterResponse, EnhancedResume, SessionResponse } from "@/types/session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -20,6 +20,10 @@ export default function FinalPage() {
   const [resume, setResume] = useState<EnhancedResume | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [coverLetter, setCoverLetter] = useState<CoverLetterResponse | null>(
+    null
+  );
+  const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -27,6 +31,13 @@ export default function FinalPage() {
       setSession(data);
       if (data.enhanced_resume) {
         setResume(data.enhanced_resume);
+      }
+      // Load existing cover letter
+      try {
+        const cl = await getCoverLetter(sessionId);
+        if (cl) setCoverLetter(cl);
+      } catch {
+        // Cover letter not found is fine
       }
     } catch {
       toast.error("Failed to load session");
@@ -38,6 +49,19 @@ export default function FinalPage() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
+
+  const handleGenerateCoverLetter = async () => {
+    setGeneratingCoverLetter(true);
+    try {
+      const result = await generateCoverLetter(sessionId);
+      setCoverLetter(result);
+      toast.success("Cover letter generated!");
+    } catch {
+      toast.error("Failed to generate cover letter");
+    } finally {
+      setGeneratingCoverLetter(false);
+    }
+  };
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -157,6 +181,42 @@ export default function FinalPage() {
           ATS-friendly professional template
         </p>
       </div>
+
+      {/* Cover Letter */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Mail className="h-4 w-4" />
+              Cover Letter
+            </CardTitle>
+            <Button
+              size="sm"
+              variant={coverLetter ? "outline" : "default"}
+              onClick={handleGenerateCoverLetter}
+              disabled={generatingCoverLetter}
+            >
+              {generatingCoverLetter
+                ? "Generating..."
+                : coverLetter
+                  ? "Regenerate"
+                  : "Generate Cover Letter"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {coverLetter ? (
+            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+              {coverLetter.content}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Generate a personalized cover letter based on your tailored resume
+              and the job description.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

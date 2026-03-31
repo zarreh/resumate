@@ -195,3 +195,12 @@ export interface ATSScore {
 export interface ATSScoreResponse {
   score: ATSScore;
 }
+
+// ---------------------------------------------------------------------------
+// Cover Letter
+// ---------------------------------------------------------------------------
+
+export interface CoverLetterResponse {
+  id: string;
+  content: string;
+}
