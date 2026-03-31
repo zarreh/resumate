@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.analytics import router as analytics_router
 from src.api.auth import router as auth_router
 from src.api.career import router as career_router
 from src.api.chat import router as chat_router
@@ -30,4 +31,5 @@ app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
 app.include_router(sessions_router, prefix="/api/v1/sessions", tags=["sessions"])
 app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["resumes"])
 app.include_router(chat_router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(ws_router, prefix="/api/v1", tags=["websocket"])
