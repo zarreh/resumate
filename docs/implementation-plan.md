@@ -1160,6 +1160,29 @@ class EnhancedResume(BaseModel):
 - Skills section is tailored
 - Tests with mocked LLM verify correct output structure
 
+### Retrospective (4.1)
+
+**What changed from the plan:**
+- No `tools.py` file created — the Resume Writer doesn't use LangGraph tools (career search). Instead, it receives pre-ranked entries and match results as LLM context via the user message. This is simpler and more testable than giving the agent search tools.
+- Added `ResumeSessionService` in `backend/src/services/resume_session.py` for storing/loading enhanced resumes on sessions.
+- Added `POST /api/v1/sessions/{session_id}/generate` endpoint to sessions API — orchestrates retrieval + scoring + resume generation in one call. Filters ranked entries to only selected entry IDs from the session.
+- Agent receives all context (JD analysis, ranked entries, match scores, gaps) in a single structured user message. The `_build_user_message` helper formats this as markdown.
+- Temperature set to 0.3 (not 0.0) for creative rephrasing while maintaining structure.
+- `CALIBRATION_PROMPT` added to `prompts.py` in preparation for Phase 4.2. When mode="calibration", it's appended to the system prompt with the user's style feedback.
+- `EnhancedResumeOutput` wrapper schema used for `with_structured_output()`, following the same pattern as `JDAnalysisOutput`.
+- Fixed a bug in the generate endpoint: after `embed_job_description()`, `jd.embedding` may still be `None` if using mocked services. Added `await db.refresh(jd)` after embedding and used safe access `jd.embedding or []`.
+
+**Gotchas discovered:**
+- When mocking `RetrievalService.embed_job_description`, the mock doesn't actually modify the `jd` ORM object's `embedding` attribute. Need `db.refresh(jd)` after the call to re-read from DB, or use safe access patterns for the embedding value.
+- `GenerateRequest` with `body: GenerateRequest | None = None` — FastAPI treats this as an optional JSON body, allowing both `POST` with empty JSON `{}` and `POST` with no body.
+
+**Test coverage:** 21 new tests (4 agent unit, 4 write node, 5 schema, 4 message builder, 3 endpoint, 1 session service), total suite: 154 tests passing.
+
+**Adjustments for upcoming sub-phases:**
+- Phase 4.2 (Calibration) can use `mode="calibration"` and `style_feedback` parameters already supported by the agent. The endpoint just needs to pass them through.
+- Phase 4.3a (Gate 3 UI) should read `enhanced_resume` from the session via `GET /sessions/{id}` — may need to extend `SessionResponse` to include it.
+- The `EnhancedResume` JSON stored in `sessions.enhanced_resume` JSONB column is the single source of truth for the draft.
+
 ---
 
 ### 4.2 — Calibration Round (Gate 2)

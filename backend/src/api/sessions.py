@@ -9,14 +9,17 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.job_analyst import JobAnalystAgent
+from src.agents.resume_writer import ResumeWriterAgent
 from src.core.database import get_db
 from src.core.dependencies import get_current_user
 from src.models.user import User
 from src.schemas.job import JDAnalysis
 from src.schemas.matching import MatchResult, RankedEntry
+from src.schemas.resume import EnhancedResume
 from src.services.job import JobService
 from src.services.llm_config import get_llm_config
 from src.services.match_scoring import MatchScorer
+from src.services.resume_session import ResumeSessionService
 from src.services.retrieval import RetrievalService
 
 router = APIRouter()
@@ -241,3 +244,94 @@ async def get_match(
     match_result = scorer.score(analysis, ranked)
 
     return MatchResponse(ranked_entries=ranked, match_result=match_result)
+
+
+# ---------------------------------------------------------------------------
+# Resume generation
+# ---------------------------------------------------------------------------
+
+
+class GenerateRequest(BaseModel):
+    """Optional overrides for resume generation."""
+
+    style_feedback: str = ""
+    mode: str = Field(default="full", pattern="^(full|calibration)$")
+
+
+class EnhancedResumeResponse(BaseModel):
+    """Response containing the generated enhanced resume."""
+
+    resume: dict = Field(description="Complete EnhancedResume JSON")  # type: ignore[type-arg]
+
+
+@router.post("/{session_id}/generate", response_model=EnhancedResumeResponse)
+async def generate_resume(
+    session_id: uuid.UUID,
+    body: GenerateRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> EnhancedResumeResponse:
+    """Generate a tailored resume for this session using the Resume Writer agent."""
+    svc = JobService(db)
+    resume_svc = ResumeSessionService(db)
+
+    session = await svc.get_session(current_user.id, session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    # Load JD and analysis
+    jd = await svc.get_job_description(current_user.id, session.job_description_id)
+    if jd is None or jd.analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description has no analysis",
+        )
+
+    jd_analysis = JDAnalysis.model_validate(jd.analysis)
+
+    # Get ranked entries and match result
+    llm_config = get_llm_config()
+    retrieval = RetrievalService(db, llm_config)
+
+    if jd.embedding is None:
+        await retrieval.embed_job_description(jd)
+        await db.refresh(jd)
+    await retrieval.embed_all_entries(current_user.id)
+
+    jd_embedding = list(jd.embedding) if jd.embedding is not None else []
+    ranked = await retrieval.find_relevant_entries(
+        current_user.id, jd_embedding, top_k=20
+    )
+
+    # Filter to selected entries only
+    selected_ids = set(session.selected_entry_ids or [])
+    if selected_ids:
+        ranked = [e for e in ranked if e.entry_id in selected_ids]
+
+    scorer = MatchScorer()
+    match_result = scorer.score(jd_analysis, ranked)
+
+    # Generate the resume
+    req = body or GenerateRequest()
+    try:
+        agent = ResumeWriterAgent(llm_config)
+        resume = await agent.write(
+            jd_analysis=jd_analysis,
+            ranked_entries=ranked,
+            match_result=match_result,
+            context_text=session.context_text or "",
+            style_feedback=req.style_feedback,
+            mode=req.mode,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to generate resume: {exc}",
+        ) from exc
+
+    # Store on session
+    await resume_svc.store_enhanced_resume(session, resume)
+
+    return EnhancedResumeResponse(resume=resume.model_dump())
