@@ -59,3 +59,4 @@ resumate/
 - [x] 3.2 — Entry Retrieval & Match Scoring
 - [x] 3.3 — Gate 1 UI (JD Analysis + Match Overview)
 - [x] 4.1 — Resume Writer Agent (Basic)
+- [x] 4.2 — Calibration Round (Gate 2)

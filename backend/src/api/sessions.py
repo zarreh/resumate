@@ -46,6 +46,7 @@ class SessionResponse(BaseModel):
     context_text: str | None
     style_preference: str | None
     analysis: JDAnalysis | None = None
+    enhanced_resume: dict | None = None  # type: ignore[type-arg]
     created_at: str
 
     model_config = {"from_attributes": True}
@@ -84,6 +85,7 @@ def _session_to_response(
         context_text=session.context_text,  # type: ignore[attr-defined]
         style_preference=session.style_preference,  # type: ignore[attr-defined]
         analysis=analysis,
+        enhanced_resume=session.enhanced_resume,  # type: ignore[attr-defined]
         created_at=session.created_at.isoformat(),  # type: ignore[attr-defined]
     )
 

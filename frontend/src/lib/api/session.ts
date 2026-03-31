@@ -2,6 +2,7 @@
 
 import { apiClient } from "../api";
 import type {
+  GenerateResponse,
   JobDescriptionResponse,
   MatchResponse,
   SessionResponse,
@@ -66,4 +67,25 @@ export async function approveGate(
 
 export async function getMatch(sessionId: string): Promise<MatchResponse> {
   return apiClient<MatchResponse>(`/api/v1/sessions/${sessionId}/match`);
+}
+
+// ---------------------------------------------------------------------------
+// Resume generation
+// ---------------------------------------------------------------------------
+
+export async function generateResume(
+  sessionId: string,
+  mode: "full" | "calibration" = "full",
+  styleFeedback = ""
+): Promise<GenerateResponse> {
+  return apiClient<GenerateResponse>(
+    `/api/v1/sessions/${sessionId}/generate`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        mode,
+        style_feedback: styleFeedback,
+      }),
+    }
+  );
 }

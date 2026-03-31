@@ -37,6 +37,7 @@ export interface SessionResponse {
   context_text: string | null;
   style_preference: string | null;
   analysis: JDAnalysis | null;
+  enhanced_resume: EnhancedResume | null;
   created_at: string;
 }
 
@@ -105,4 +106,43 @@ export const SENIORITY_LABELS: Record<string, string> = {
 
 export function seniorityLabel(level: string): string {
   return SENIORITY_LABELS[level] || level;
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced Resume
+// ---------------------------------------------------------------------------
+
+export interface EnhancedBullet {
+  id: string;
+  original_text: string;
+  enhanced_text: string;
+  source_entry_id: string;
+  relevance_score: number;
+}
+
+export interface ResumeSectionEntry {
+  entry_id: string;
+  title: string;
+  organization: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  bullets: EnhancedBullet[];
+}
+
+export interface ResumeSection {
+  id: string;
+  section_type: string;
+  title: string;
+  entries: ResumeSectionEntry[];
+}
+
+export interface EnhancedResume {
+  summary: string;
+  sections: ResumeSection[];
+  skills: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface GenerateResponse {
+  resume: EnhancedResume;
 }

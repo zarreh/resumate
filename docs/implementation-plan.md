@@ -1214,6 +1214,23 @@ frontend/src/components/session/
 - After approval, full resume is generated matching the calibrated style
 - Streaming shows progress as bullets are generated
 
+### Retrospective (4.2)
+
+**What changed from the plan:**
+- The agent generates a **full resume** in the initial preview (not just 2-3 bullets), but the `CalibrationView` frontend component only **displays** the first 3 sample bullets for calibration. This is simpler than having a separate "preview" agent mode — the same `generate` endpoint is used for both initial and calibrated generation.
+- No streaming yet — the `generateResume` API call is a simple REST POST that returns the complete result. WebSocket streaming will be added in a future phase.
+- The calibration page uses a 3/5 + 2/5 grid layout: left side shows preview (summary + 3 sample bullets + skills), right side shows style feedback input.
+- Added `enhanced_resume` field to `SessionResponse` so the frontend can read the stored resume via `GET /sessions/{id}` without re-generating.
+- `BulletDiff.tsx` implements a simple LCS-based word-level diff without any external dependency (no `diff` npm package needed).
+- The "Regenerate with Feedback" button only appears when feedback text is non-empty, allowing iterative calibration cycles.
+- User can edit inline bullets (planned) is deferred to 4.3b — calibration only supports text-based style feedback for now.
+
+**Gotchas discovered:**
+- No new backend gotchas. The existing `mode="calibration"` + `style_feedback` parameters from 4.1 work directly.
+- The LCS word diff splits on whitespace (preserving spaces in output) for cleaner results than character-level diff.
+
+**Test coverage:** No new backend tests needed — the calibration flow uses the same `generate` endpoint tested in 4.1. Frontend builds cleanly.
+
 ---
 
 ### 4.3a — Gate 3 UI: Full Draft Display + Diff
