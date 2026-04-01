@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { BulletDiff, type DiffMode } from "@/components/session/BulletDiff";
 import { ReviewBadges } from "@/components/session/ReviewBadges";
@@ -26,6 +27,21 @@ export function BulletCard({
   onEdit,
   showControls = false,
 }: BulletCardProps) {
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(bullet.enhanced_text);
+
+  const handleSave = () => {
+    if (onEdit && editText.trim()) {
+      onEdit(editText.trim());
+    }
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditText(bullet.enhanced_text);
+    setEditing(false);
+  };
+
   return (
     <div
       className={cn(
@@ -35,11 +51,37 @@ export function BulletCard({
         status === "pending" && "border-border"
       )}
     >
-      <BulletDiff
-        original={bullet.original_text}
-        enhanced={bullet.enhanced_text}
-        mode={diffMode}
-      />
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            rows={3}
+            autoFocus
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-green-700"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleCancel}
+              className="rounded bg-muted px-3 py-1 text-xs font-medium transition-colors hover:bg-muted/80"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <BulletDiff
+          original={bullet.original_text}
+          enhanced={bullet.enhanced_text}
+          mode={diffMode}
+        />
+      )}
 
       <div className="mt-3 flex items-center justify-between">
         <span
@@ -55,7 +97,7 @@ export function BulletCard({
           Relevance: {Math.round(bullet.relevance_score * 100)}%
         </span>
 
-        {showControls && (
+        {showControls && !editing && (
           <div className="flex items-center gap-2">
             <button
               onClick={onApprove}
@@ -81,7 +123,10 @@ export function BulletCard({
             </button>
             {onEdit && (
               <button
-                onClick={() => onEdit(bullet.enhanced_text)}
+                onClick={() => {
+                  setEditText(bullet.enhanced_text);
+                  setEditing(true);
+                }}
                 className="rounded bg-muted px-3 py-1 text-xs font-medium transition-colors hover:bg-muted/80"
               >
                 Edit

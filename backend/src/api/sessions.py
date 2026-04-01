@@ -442,6 +442,7 @@ async def generate_resume(
             past_session_context=past_session_context,
         )
     except Exception as exc:
+        logger.exception("Resume generation failed for session %s", session_id)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Failed to generate resume: {exc}",

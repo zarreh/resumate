@@ -139,7 +139,9 @@ class ResumeWriterAgent:
 
     async def _write_resume_node(self, state: WriterState) -> dict[str, Any]:
         """Run the LLM to produce the enhanced resume."""
-        structured_model = self._model.with_structured_output(ResumeWriterOutput)
+        structured_model = self._model.with_structured_output(
+            ResumeWriterOutput, method="function_calling"
+        )
 
         mode = state.get("mode", "full")
         style_pref = state.get("style_preference", "moderate")
