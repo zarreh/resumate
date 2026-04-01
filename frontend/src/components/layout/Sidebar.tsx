@@ -13,10 +13,10 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/career", label: "Career History", icon: Briefcase },
-  { href: "/dashboard/sessions", label: "Sessions", icon: FileText },
-  { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
-  { href: "/dashboard/quality", label: "Quality", icon: BarChart3 },
+  { href: "/career", label: "Career History", icon: Briefcase },
+  { href: "/sessions", label: "Sessions", icon: FileText },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/quality", label: "Quality", icon: BarChart3 },
 ];
 
 export default function Sidebar() {
@@ -34,7 +34,7 @@ export default function Sidebar() {
           const Icon = item.icon;
           const active =
             pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            (item.href !== "/dashboard" && item.href !== "/" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}

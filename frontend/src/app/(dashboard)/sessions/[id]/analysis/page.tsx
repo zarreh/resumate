@@ -98,7 +98,7 @@ export default function AnalysisPage() {
         contextText || undefined
       );
       toast.success("Analysis approved! Moving to calibration...");
-      router.push(`/dashboard/sessions/${sessionId}/calibration`);
+      router.push(`/sessions/${sessionId}/calibration`);
     } catch {
       toast.error("Failed to approve analysis");
     } finally {

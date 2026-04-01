@@ -12,6 +12,7 @@ import {
   updateEntry,
   deleteEntry,
   confirmAllEntries,
+  parseResume,
 } from "@/lib/api/career";
 import type {
   CareerEntry,
@@ -80,11 +81,29 @@ export default function CareerPage() {
     }
   }
 
-  function handleImported(_text: string) {
-    toast.success("Resume imported! Text extracted successfully.");
-    // The extracted text could be used for parsing in the future.
-    // For now, just refresh the entry list.
-    fetchEntries();
+  async function handleImported(text: string) {
+    toast.loading("Parsing resume with AI...", { id: "parse" });
+    try {
+      const parsed = await parseResume(text);
+      await Promise.all(
+        parsed.entries.map((e) =>
+          createEntry({
+            entry_type: e.entry_type,
+            title: e.title,
+            organization: e.organization,
+            start_date: e.start_date,
+            end_date: e.end_date,
+            bullet_points: e.bullet_points.map((b) => b.text),
+            tags: e.tags,
+            raw_text: e.raw_text,
+          })
+        )
+      );
+      toast.success(`Imported ${parsed.entry_count} entries`, { id: "parse" });
+      fetchEntries();
+    } catch {
+      toast.error("Failed to parse resume", { id: "parse" });
+    }
   }
 
   const hasParsedEntries = entries.some((e) => e.source === "parsed_resume");

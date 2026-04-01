@@ -4,6 +4,7 @@ import type {
   CareerEntryCreate,
   CareerEntryUpdate,
   ImportResponse,
+  ParsedResumeResponse,
 } from "@/types/career";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -49,6 +50,13 @@ export async function deleteEntry(id: string): Promise<void> {
 export async function confirmAllEntries(): Promise<{ confirmed: number }> {
   return apiClient<{ confirmed: number }>("/api/v1/career/entries/confirm-all", {
     method: "POST",
+  });
+}
+
+export async function parseResume(text: string): Promise<ParsedResumeResponse> {
+  return apiClient<ParsedResumeResponse>("/api/v1/career/parse", {
+    method: "POST",
+    body: JSON.stringify({ text }),
   });
 }
 

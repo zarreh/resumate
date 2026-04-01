@@ -238,6 +238,14 @@ psql -U $POSTGRES_USER -d $POSTGRES_DB -c "CREATE EXTENSION IF NOT EXISTS vector
 - Phase 1.4 should expand `backend/src/main.py` (already exists with health endpoint) rather than creating it from scratch. Add CORS middleware, auth router includes, etc.
 - Container names are `resumate-backend` and `resumate-postgres` (for `docker exec` commands in subsequent phases).
 
+**Post-implementation fixes (discovered during first run):**
+- `PYTHONPATH=/app` must be set in the Dockerfile ENV so that the uvicorn reloader subprocess can import `src.*`. Without it, the worker process raises `ModuleNotFoundError: No module named 'src'` even though WORKDIR is `/app`.
+- `docker-compose.yml` must include `env_file: ./backend/.env` on the backend service so that `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` reach the container's OS environment. The `llm.yaml` loader uses `os.environ` directly (not pydantic-settings), so env vars present only in `.env` without `env_file` are invisible to it.
+- `Settings` in `src/core/config.py` needs `extra="ignore"` plus explicit `openai_api_key`/`anthropic_api_key` fields to avoid a pydantic validation error when those keys are present in `.env`.
+- Next.js route groups like `(dashboard)` do NOT add a URL prefix — routes inside `(dashboard)/chat/page.tsx` resolve to `/chat`, not `/dashboard/chat`. Sidebar links and all `router.push()` calls must omit the `/dashboard/` prefix.
+- The resume import flow requires two backend calls: `POST /career/import` (extract text) followed by `POST /career/parse` (LLM structured parse). The frontend must call both and then `POST /career/entries` for each returned entry — parse alone does not persist anything.
+- A root-level `Makefile` was added for convenience — `make up`, `make migrate`, `make logs-backend`, etc.
+
 ---
 
 ### 1.3 — Database Schema & Migrations

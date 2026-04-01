@@ -184,7 +184,7 @@ export default function ReviewPage() {
     try {
       await approveGate(sessionId, "review");
       toast.success("Review approved! Moving to final...");
-      router.push(`/dashboard/sessions/${sessionId}/final`);
+      router.push(`/sessions/${sessionId}/final`);
     } catch {
       toast.error("Failed to approve review");
     } finally {

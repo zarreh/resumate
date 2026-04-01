@@ -15,7 +15,7 @@ export default function NewSessionPage() {
     try {
       const session = await startSession(params);
       toast.success("Job description analyzed successfully");
-      router.push(`/dashboard/sessions/${session.id}/analysis`);
+      router.push(`/sessions/${session.id}/analysis`);
     } catch {
       toast.error("Failed to analyze job description");
     } finally {

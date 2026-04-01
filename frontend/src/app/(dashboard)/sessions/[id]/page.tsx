@@ -18,19 +18,19 @@ export default function SessionPage() {
         // Route to the current gate page
         const gate = session.current_gate;
         if (gate === "analysis") {
-          router.replace(`/dashboard/sessions/${sessionId}/analysis`);
+          router.replace(`/sessions/${sessionId}/analysis`);
         } else if (gate === "calibration") {
-          router.replace(`/dashboard/sessions/${sessionId}/calibration`);
+          router.replace(`/sessions/${sessionId}/calibration`);
         } else if (gate === "review") {
-          router.replace(`/dashboard/sessions/${sessionId}/review`);
+          router.replace(`/sessions/${sessionId}/review`);
         } else if (gate === "final") {
-          router.replace(`/dashboard/sessions/${sessionId}/final`);
+          router.replace(`/sessions/${sessionId}/final`);
         } else {
-          router.replace(`/dashboard/sessions/${sessionId}/analysis`);
+          router.replace(`/sessions/${sessionId}/analysis`);
         }
       } catch {
         toast.error("Failed to load session");
-        router.replace("/dashboard/sessions");
+        router.replace("/sessions");
       } finally {
         setLoading(false);
       }

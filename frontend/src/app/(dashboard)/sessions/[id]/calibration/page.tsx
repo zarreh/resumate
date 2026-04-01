@@ -133,7 +133,7 @@ export default function CalibrationPage() {
 
       await approveGate(sessionId, "calibration");
       toast.success("Calibration approved! Moving to review...");
-      router.push(`/dashboard/sessions/${sessionId}/review`);
+      router.push(`/sessions/${sessionId}/review`);
     } catch {
       toast.error("Failed to approve calibration");
     } finally {

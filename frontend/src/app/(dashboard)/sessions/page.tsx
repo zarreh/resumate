@@ -50,7 +50,7 @@ export default function SessionsPage() {
     try {
       const newSession = await forkSession(sessionId);
       toast.success("Session forked successfully");
-      router.push(`/dashboard/sessions/${newSession.id}/analysis`);
+      router.push(`/sessions/${newSession.id}/analysis`);
     } catch {
       toast.error("Failed to fork session");
     } finally {
@@ -75,7 +75,7 @@ export default function SessionsPage() {
             Manage your resume tailoring sessions.
           </p>
         </div>
-        <Button onClick={() => router.push("/dashboard/sessions/new")}>
+        <Button onClick={() => router.push("/sessions/new")}>
           <Plus className="mr-2 h-4 w-4" />
           New Session
         </Button>
@@ -93,7 +93,7 @@ export default function SessionsPage() {
           <Button
             variant="outline"
             className="mt-4"
-            onClick={() => router.push("/dashboard/sessions/new")}
+            onClick={() => router.push("/sessions/new")}
           >
             <Plus className="mr-2 h-4 w-4" />
             Start New Session
@@ -158,7 +158,7 @@ export default function SessionsPage() {
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      router.push(`/dashboard/sessions/${s.id}`)
+                      router.push(`/sessions/${s.id}`)
                     }
                     className="gap-1"
                   >

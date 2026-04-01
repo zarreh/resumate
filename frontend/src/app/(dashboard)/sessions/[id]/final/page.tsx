@@ -119,7 +119,7 @@ export default function FinalPage() {
     try {
       const newSession = await forkSession(sessionId);
       toast.success("Session forked — starting fresh tailoring");
-      router.push(`/dashboard/sessions/${newSession.id}/analysis`);
+      router.push(`/sessions/${newSession.id}/analysis`);
     } catch {
       toast.error("Failed to fork session");
     } finally {
